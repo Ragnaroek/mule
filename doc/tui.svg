@@ -1,0 +1,178 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+
+<svg
+   width="210mm"
+   height="297mm"
+   viewBox="0 0 210 297"
+   version="1.1"
+   id="svg1"
+   inkscape:version="1.4.2 (ebf0e940, 2025-05-08)"
+   sodipodi:docname="tui.svg"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <sodipodi:namedview
+     id="namedview1"
+     pagecolor="#ffffff"
+     bordercolor="#000000"
+     borderopacity="0.25"
+     inkscape:showpageshadow="2"
+     inkscape:pageopacity="0.0"
+     inkscape:pagecheckerboard="0"
+     inkscape:deskcolor="#d1d1d1"
+     inkscape:document-units="mm"
+     inkscape:zoom="0.89887065"
+     inkscape:cx="396.60879"
+     inkscape:cy="362.12107"
+     inkscape:window-width="1888"
+     inkscape:window-height="938"
+     inkscape:window-x="1112"
+     inkscape:window-y="1251"
+     inkscape:window-maximized="0"
+     inkscape:current-layer="layer1" />
+  <defs
+     id="defs1">
+    <rect
+       x="335.97715"
+       y="135.72587"
+       width="396.05254"
+       height="369.35236"
+       id="rect18" />
+    <rect
+       x="83.438034"
+       y="161.31353"
+       width="130.16333"
+       height="34.487721"
+       id="rect15" />
+    <rect
+       x="61.187892"
+       y="518.42832"
+       width="251.42661"
+       height="17.800114"
+       id="rect10" />
+    <rect
+       x="61.187892"
+       y="105.68818"
+       width="529.55339"
+       height="14.462593"
+       id="rect9" />
+    <linearGradient
+       id="swatch1"
+       inkscape:swatch="solid">
+      <stop
+         style="stop-color:#000000;stop-opacity:1;"
+         offset="0"
+         id="stop1" />
+    </linearGradient>
+  </defs>
+  <g
+     inkscape:label="Layer 1"
+     inkscape:groupmode="layer"
+     id="layer1">
+    <rect
+       style="fill:none;stroke-width:0.265;fill-opacity:1;stroke-dasharray:none;stroke:#000000;stroke-opacity:1"
+       id="rect1"
+       width="183.96927"
+       height="117.15163"
+       x="13.834489"
+       y="26.785927" />
+    <rect
+       style="fill:none;stroke:#000000;stroke-width:0.264999;stroke-dasharray:none;stroke-opacity:1"
+       id="rect7"
+       width="180.73141"
+       height="5.5926661"
+       x="15.306243"
+       y="136.5788" />
+    <rect
+       style="fill:none;stroke:#000000;stroke-width:0.264999;stroke-dasharray:none;stroke-opacity:1"
+       id="rect8"
+       width="179.84836"
+       height="101.55104"
+       x="15.894946"
+       y="33.261642" />
+    <text
+       xml:space="preserve"
+       transform="scale(0.26458333)"
+       id="text8"
+       style="text-align:start;writing-mode:lr-tb;direction:ltr;white-space:pre;shape-inside:url(#rect9);fill:none;stroke:#000000;stroke-width:1.00157;stroke-dasharray:none;stroke-opacity:1"><tspan
+         x="61.1875"
+         y="116.63546"
+         id="tspan1">Binary Viewer: iw (Mach-O, arm64, executable)</tspan></text>
+    <text
+       xml:space="preserve"
+       transform="scale(0.26458333)"
+       id="text9"
+       style="text-align:start;writing-mode:lr-tb;direction:ltr;white-space:pre;shape-inside:url(#rect10);fill:none;stroke:#000000;stroke-width:1.00157;stroke-dasharray:none;stroke-opacity:1"><tspan
+         x="61.1875"
+         y="529.3757"
+         id="tspan2">:o ../iron-wolf/target/release/iw</tspan></text>
+    <rect
+       style="fill:none;stroke:#000000;stroke-width:0.14847;stroke-dasharray:none;stroke-opacity:1"
+       id="rect12"
+       width="67.817223"
+       height="8.9470549"
+       x="17.308434"
+       y="34.675133" />
+    <rect
+       style="fill:none;stroke:#000000;stroke-width:0.264999;stroke-dasharray:none;stroke-opacity:1"
+       id="rect13"
+       width="67.406342"
+       height="26.491575"
+       x="17.661051"
+       y="46.213078" />
+    <rect
+       style="fill:none;stroke:#000000;stroke-width:0.324246;stroke-dasharray:none;stroke-opacity:1"
+       id="rect14"
+       width="67.347092"
+       height="57.339169"
+       x="17.690674"
+       y="75.089088" />
+    <text
+       xml:space="preserve"
+       transform="matrix(0.26458333,0,0,0.26458333,-2.6491576,-6.4757185)"
+       id="text14"
+       style="text-align:start;writing-mode:lr-tb;direction:ltr;white-space:pre;shape-inside:url(#rect15);fill:none;stroke:#000000;stroke-width:1.00157;stroke-dasharray:none;stroke-opacity:1"><tspan
+         x="83.4375"
+         y="172.26242"
+         id="tspan3">Header</tspan></text>
+    <text
+       xml:space="preserve"
+       style="font-size:3.175px;text-align:start;writing-mode:lr-tb;direction:ltr;text-anchor:start;fill:none;stroke:#000000;stroke-width:0.264999;stroke-dasharray:none;stroke-opacity:1"
+       x="19.427156"
+       y="51.80574"
+       id="text16"><tspan
+         sodipodi:role="line"
+         id="tspan16"
+         style="stroke-width:0.265"
+         x="19.427156"
+         y="51.80574">Load Commands</tspan></text>
+    <text
+       xml:space="preserve"
+       style="font-size:3.175px;text-align:start;writing-mode:lr-tb;direction:ltr;text-anchor:start;fill:none;stroke:#000000;stroke-width:0.264999;stroke-dasharray:none;stroke-opacity:1"
+       x="19.132805"
+       y="80.063423"
+       id="text17"><tspan
+         sodipodi:role="line"
+         id="tspan17"
+         style="stroke-width:0.265"
+         x="19.132805"
+         y="80.063423">Segments</tspan></text>
+    <text
+       xml:space="preserve"
+       transform="scale(0.26458333)"
+       id="text18"
+       style="text-align:start;writing-mode:lr-tb;direction:ltr;white-space:pre;shape-inside:url(#rect18);fill:none;stroke:#000000;stroke-width:1.00157;stroke-dasharray:none;stroke-opacity:1"><tspan
+         x="335.97656"
+         y="146.67453"
+         id="tspan4">Detail View for selection on left hand side!</tspan></text>
+    <rect
+       style="fill:none;stroke:#000000;stroke-width:0.264999;stroke-dasharray:none;stroke-opacity:1"
+       id="rect19"
+       width="105.67195"
+       height="97.72448"
+       x="87.127846"
+       y="34.439049" />
+  </g>
+</svg>
