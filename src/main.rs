@@ -2,11 +2,11 @@ use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyEventKind};
 use ratatui::{
     DefaultTerminal, Frame,
     buffer::Buffer,
-    layout::Rect,
-    style::Stylize,
+    layout::{Constraint, Layout, Rect},
+    style::{Style, Stylize},
     symbols::border,
     text::{Line, Text},
-    widgets::{Block, Paragraph, Widget},
+    widgets::{Block, BorderType, Paragraph, Widget},
 };
 use std::io;
 
@@ -67,28 +67,52 @@ impl Mule {
 
 impl Widget for &Mule {
     fn render(self, area: Rect, buf: &mut Buffer) {
-        let title = Line::from(" Counter App Tutorial ".bold());
-        let instructions = Line::from(vec![
-            " Decrement ".into(),
-            "<Left>".blue().bold(),
-            " Increment ".into(),
-            "<Right>".blue().bold(),
-            " Quit ".into(),
-            "<Q> ".blue().bold(),
-        ]);
-        let block = Block::bordered()
-            .title(title.centered())
-            .title_bottom(instructions.centered())
-            .border_set(border::THICK);
+        let main_layout =
+            Layout::vertical([Constraint::Max(3), Constraint::Min(0), Constraint::Max(3)]);
+        let [header, content, command] = main_layout.areas(area);
 
-        let counter_text = Text::from(vec![Line::from(vec![
-            "Value: ".into(),
-            self.counter.to_string().yellow(),
-        ])]);
+        let content_layout =
+            Layout::horizontal([Constraint::Percentage(30), Constraint::Percentage(70)]);
+        let [content_file, content_detail] = content_layout.areas(content);
 
-        Paragraph::new(counter_text)
-            .centered()
-            .block(block)
-            .render(area, buf);
+        // TODO Hights have to be computed dynamically from the Mach-O file
+        let file_layout =
+            Layout::vertical([Constraint::Max(3), Constraint::Max(10), Constraint::Max(30)]);
+        let [mach_header, mach_commands, mach_segments] = file_layout.areas(content_file);
+
+        let header_block = Block::bordered()
+            .border_type(BorderType::Plain)
+            .title("Binary");
+        Paragraph::new("iw (Mach-O, arm64, executable".bold())
+            .block(header_block)
+            .render(header, buf);
+
+        Block::bordered()
+            .border_type(BorderType::Plain)
+            //.style(Style::new().black().on_white())
+            .title("Header")
+            .render(mach_header, buf);
+
+        Block::bordered()
+            .border_type(BorderType::Plain)
+            .style(Style::new().black().on_white())
+            .title("Load Commands")
+            .render(mach_commands, buf);
+
+        Block::bordered()
+            .border_type(BorderType::Plain)
+            //.style(Style::new().black().on_white())
+            .title("Segments")
+            .render(mach_segments, buf);
+
+        Block::bordered()
+            .border_type(BorderType::Plain)
+            .title("Details")
+            .render(content_detail, buf);
+
+        let command_block = Block::bordered().border_type(BorderType::Plain);
+        Paragraph::new(":dwarf")
+            .block(command_block)
+            .render(command, buf);
     }
 }
