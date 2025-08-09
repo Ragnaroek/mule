@@ -1,16 +1,24 @@
-use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyEventKind};
+mod macho;
+mod open;
+
+use crossterm::event::{self, Event, KeyCode, KeyEventKind};
 use ratatui::{
     DefaultTerminal, Frame,
     buffer::Buffer,
     layout::{Constraint, Layout, Rect},
     style::{Color, Style, Stylize},
-    widgets::{Block, BorderType, Paragraph, Widget},
+    widgets::{Block, BorderType, Paragraph, StatefulWidget, Widget},
 };
-use std::{io, path::PathBuf};
+use std::{path::PathBuf, str::FromStr};
+
+use crate::{
+    macho::MachoWidget,
+    open::{BinaryFile, open_binary_file},
+};
 
 fn main() -> Result<(), String> {
     let mut terminal = ratatui::init();
-    Mule::new().run(&mut terminal).map_err(|e| e.to_string())?;
+    Mule::new().run(&mut terminal)?;
     ratatui::restore();
     Ok(())
 }
@@ -20,8 +28,13 @@ enum InputMode {
     Editing,
 }
 
+struct BinaryState {
+    path: PathBuf,
+    file: BinaryFile,
+}
+
 struct ProjectState {
-    binary_path: Option<PathBuf>,
+    binary: Option<BinaryState>,
 }
 
 struct Mule {
@@ -34,7 +47,7 @@ struct Mule {
 
 impl Mule {
     pub fn new() -> Mule {
-        let project_state = ProjectState { binary_path: None };
+        let project_state = ProjectState { binary: None };
 
         Mule {
             project_state,
@@ -46,9 +59,11 @@ impl Mule {
     }
 
     /// runs the application's main loop until the user quits
-    pub fn run(&mut self, terminal: &mut DefaultTerminal) -> io::Result<()> {
+    pub fn run(&mut self, terminal: &mut DefaultTerminal) -> Result<(), String> {
         while !self.exit {
-            terminal.draw(|frame| self.draw(frame))?;
+            terminal
+                .draw(|frame| self.draw(frame))
+                .map_err(|e| e.to_string())?;
             if self.handle_events()? {
                 return Ok(()); // quit
             }
@@ -102,8 +117,8 @@ impl Mule {
         self.move_cursor_right();
     }
 
-    fn handle_events(&mut self) -> io::Result<bool> {
-        if let Event::Key(key) = event::read()? {
+    fn handle_events(&mut self) -> Result<bool, String> {
+        if let Event::Key(key) = event::read().map_err(|e| e.to_string())? {
             match self.input_mode {
                 InputMode::Normal => match key.code {
                     KeyCode::Char(':') => {
@@ -114,7 +129,7 @@ impl Mule {
                 },
                 InputMode::Editing if key.kind == KeyEventKind::Press => match key.code {
                     KeyCode::Enter => {
-                        if self.exec_command() {
+                        if self.exec_command()? {
                             return Ok(true);
                         }
                     }
@@ -131,19 +146,30 @@ impl Mule {
         Ok(false)
     }
 
-    fn exec_command(&mut self) -> bool {
+    fn exec_command(&mut self) -> Result<bool, String> {
         if self.input == ":q" {
-            return true;
+            return Ok(true);
         }
 
         let input_cmd = self.input.clone();
 
-        // TODO parse input here
+        if input_cmd.starts_with(":o") {
+            let mut iter = input_cmd.split_whitespace();
+            iter.next();
+
+            let file_path = iter.next().expect("file_path");
+            let path = PathBuf::from_str(file_path).map_err(|e| e.to_string())?;
+            let binary_file = open_binary_file(&path)?;
+            self.project_state.binary = Some(BinaryState {
+                path,
+                file: binary_file,
+            })
+        }
 
         self.input.clear();
         self.character_index = 0;
 
-        false
+        Ok(false)
     }
 }
 
@@ -153,31 +179,26 @@ impl Widget for &Mule {
             Layout::vertical([Constraint::Max(3), Constraint::Min(0), Constraint::Max(3)]);
         let [header, content, command] = main_layout.areas(area);
 
-        let content_layout =
-            Layout::horizontal([Constraint::Percentage(30), Constraint::Percentage(70)]);
-        let [content_file, content_detail] = content_layout.areas(content);
-
-        // TODO Hights have to be computed dynamically from the Mach-O file
-        let file_layout =
-            Layout::vertical([Constraint::Max(3), Constraint::Max(10), Constraint::Max(30)]);
-        let [mach_header, mach_commands, mach_segments] = file_layout.areas(content_file);
-
         let header_block = Block::bordered()
             .border_type(BorderType::Plain)
             .title("Binary");
 
-        let binary_str = if self.project_state.binary_path.is_none() {
-            "<no binary loaded>"
-        } else {
+        let binary_str = if let Some(binary_state) = self.project_state.binary.as_ref() {
+            let binary_str = binary_state.path.to_str().unwrap();
             // TODO show real info from loaded binary here
-            "iw (Mach-O, arm64, executable)"
+            &format!("{} (Mach-O, arm64, executable)", binary_str)
+        } else {
+            "<no binary loaded>"
         };
 
         Paragraph::new(binary_str.bold())
             .block(header_block)
             .render(header, buf);
 
-        if self.project_state.binary_path.is_none() {
+        if let Some(binary_state) = self.project_state.binary.as_ref() {
+            let widget = MachoWidget {};
+            widget.render(content, buf);
+        } else {
             let placeholder_block = Block::bordered().border_type(BorderType::Plain);
             Paragraph::new(
                 "No binary loaded, please load a binary for inspection with the :o command",
@@ -185,30 +206,6 @@ impl Widget for &Mule {
             .fg(Color::LightRed)
             .block(placeholder_block)
             .render(content, buf)
-        } else {
-            // TODO put this into the macho.rs file
-            Block::bordered()
-                .border_type(BorderType::Plain)
-                //.style(Style::new().black().on_white())
-                .title("Header")
-                .render(mach_header, buf);
-
-            Block::bordered()
-                .border_type(BorderType::Plain)
-                .style(Style::new().black().on_white())
-                .title("Load Commands")
-                .render(mach_commands, buf);
-
-            Block::bordered()
-                .border_type(BorderType::Plain)
-                //.style(Style::new().black().on_white())
-                .title("Segments")
-                .render(mach_segments, buf);
-
-            Block::bordered()
-                .border_type(BorderType::Plain)
-                .title("Details")
-                .render(content_detail, buf);
         }
 
         let command_block = Block::bordered().border_type(BorderType::Plain);
