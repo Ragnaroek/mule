@@ -196,8 +196,12 @@ impl Widget for &Mule {
             .render(header, buf);
 
         if let Some(binary_state) = self.project_state.binary.as_ref() {
-            let widget = MachoWidget {};
-            widget.render(content, buf);
+            match &binary_state.file {
+                BinaryFile::Macho(macho) => {
+                    let mut widget = MachoWidget::new(macho);
+                    widget.render(content, buf);
+                }
+            }
         } else {
             let placeholder_block = Block::bordered().border_type(BorderType::Plain);
             Paragraph::new(
