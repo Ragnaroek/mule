@@ -73,7 +73,9 @@ fn command_list(macho: &Macho) -> Vec<String> {
             LoadCommand::LoadDylib(dylib) => {
                 format!("LoadDylib | {}", dylib.name)
             }
-            LoadCommand::LoadDylinker(_) => "LoadDylinker".to_string(),
+            LoadCommand::Dylinker(dylink) => {
+                format!("Dylinker | {}", dylink.name)
+            }
             LoadCommand::Segment64(seg) => {
                 format!("Segment64 | {}", seg.name)
             }
@@ -85,6 +87,7 @@ fn command_list(macho: &Macho) -> Vec<String> {
             LoadCommand::SourceVersion(_) => "SourceVersion".to_string(),
             LoadCommand::DyldInfoOnly(_) => "DyldInfoOnly".to_string(),
             LoadCommand::Main(_) => "Main".to_string(),
+            LoadCommand::LinkeditData(_) => "LinkeditData".to_string(),
             LoadCommand::Unknow(_) => "Unknown".to_string(),
         };
         result.push(cmd_str);
