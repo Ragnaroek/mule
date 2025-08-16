@@ -7,7 +7,7 @@ use ratatui::{
     buffer::Buffer,
     layout::{Constraint, Layout, Rect},
     style::{Color, Style, Stylize},
-    widgets::{Block, BorderType, Paragraph, StatefulWidget, Widget},
+    widgets::{Block, BorderType, Paragraph, Widget},
 };
 use std::{path::PathBuf, str::FromStr};
 
@@ -23,9 +23,10 @@ fn main() -> Result<(), String> {
     Ok(())
 }
 
+#[derive(Debug)]
 enum InputMode {
-    Normal,
-    Editing,
+    Command,     // Focus in on the command line
+    Interactive, // Focus is on the display widget
 }
 
 struct BinaryState {
@@ -52,7 +53,7 @@ impl Mule {
         Mule {
             project_state,
             input: String::new(),
-            input_mode: InputMode::Normal,
+            input_mode: InputMode::Command,
             character_index: 0,
             exit: false,
         }
@@ -119,28 +120,30 @@ impl Mule {
 
     fn handle_events(&mut self) -> Result<bool, String> {
         if let Event::Key(key) = event::read().map_err(|e| e.to_string())? {
+            if key.kind != KeyEventKind::Press {
+                return Ok(false);
+            }
             match self.input_mode {
-                InputMode::Normal => match key.code {
-                    KeyCode::Char(':') => {
-                        self.enter_char(':');
-                        self.input_mode = InputMode::Editing;
-                    }
-                    _ => {}
-                },
-                InputMode::Editing if key.kind == KeyEventKind::Press => match key.code {
+                InputMode::Command => match key.code {
                     KeyCode::Enter => {
                         if self.exec_command()? {
                             return Ok(true);
                         }
+                        self.input_mode = InputMode::Interactive;
                     }
                     KeyCode::Char(to_insert) => self.enter_char(to_insert),
                     KeyCode::Backspace => self.delete_char(),
                     KeyCode::Left => self.move_cursor_left(),
                     KeyCode::Right => self.move_cursor_right(),
-                    KeyCode::Esc => self.input_mode = InputMode::Normal,
-                    _ => {}
+                    _ => { /* ignore */ }
                 },
-                InputMode::Editing => {}
+                InputMode::Interactive => {
+                    match key.code {
+                        KeyCode::Esc => self.input_mode = InputMode::Command,
+                        _ => { /* ignore */ }
+                    }
+                    // TODO forward event to current widget
+                }
             }
         }
         Ok(false)
@@ -215,8 +218,8 @@ impl Widget for &Mule {
         let command_block = Block::bordered().border_type(BorderType::Plain);
         Paragraph::new(self.input.as_str())
             .style(match self.input_mode {
-                InputMode::Normal => Style::default(),
-                InputMode::Editing => Style::default().fg(Color::Yellow),
+                InputMode::Interactive => Style::default(),
+                InputMode::Command => Style::default().fg(Color::Yellow),
             })
             .block(command_block)
             .render(command, buf);

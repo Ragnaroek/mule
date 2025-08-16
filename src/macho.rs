@@ -1,4 +1,4 @@
-use macho::{LoadCommand, Macho, Segment64Command, SymtabCommand};
+use macho::{LoadCommand, Macho};
 use ratatui::{
     buffer::Buffer,
     layout::{Constraint, Layout, Rect},
@@ -30,10 +30,7 @@ impl<'a> Widget for &mut MachoWidget<'a> {
         let [content_file, content_detail] = content_layout.areas(area);
 
         // TODO Hights have to be computed dynamically from the Mach-O file
-        let file_layout = Layout::vertical([
-            Constraint::Max(3),
-            Constraint::Max((self.macho.load_commands.len() + 2) as u16),
-        ]);
+        let file_layout = Layout::vertical([Constraint::Max(3), Constraint::Fill(1)]);
         let [mach_header, mach_commands] = file_layout.areas(content_file);
 
         let header_block = Block::bordered()
