@@ -1,3 +1,4 @@
+use crossterm::event::KeyCode;
 use macho::{LoadCommand, Macho};
 use ratatui::{
     buffer::Buffer,
@@ -6,20 +7,34 @@ use ratatui::{
     widgets::{Block, BorderType, List, ListState, Paragraph, StatefulWidget, Widget},
 };
 
-pub struct MachoWidget<'a> {
-    pub macho: &'a Macho,
+pub struct MachoInteractiveState {
     pub command_state: ListState,
 }
 
-impl<'a> MachoWidget<'a> {
-    pub fn new(macho: &'a Macho) -> MachoWidget<'a> {
+impl MachoInteractiveState {
+    pub fn new() -> MachoInteractiveState {
         let mut command_state = ListState::default();
         command_state.select(Some(0));
+        MachoInteractiveState { command_state }
+    }
 
-        MachoWidget {
-            macho,
-            command_state,
+    pub fn handle_key(&mut self, key: KeyCode) {
+        match key {
+            KeyCode::Down => self.command_state.select_next(),
+            KeyCode::Up => self.command_state.select_previous(),
+            _ => {}
         }
+    }
+}
+
+pub struct MachoWidget<'a> {
+    pub macho: &'a Macho,
+    pub state: &'a mut MachoInteractiveState,
+}
+
+impl<'a> MachoWidget<'a> {
+    pub fn new(macho: &'a Macho, state: &'a mut MachoInteractiveState) -> MachoWidget<'a> {
+        MachoWidget { macho, state }
     }
 }
 
@@ -51,7 +66,7 @@ impl<'a> Widget for &mut MachoWidget<'a> {
         let cmd_list = List::new(command_list(self.macho))
             .block(command_block)
             .highlight_style(Style::new().black().on_white());
-        StatefulWidget::render(cmd_list, mach_commands, buf, &mut self.command_state);
+        StatefulWidget::render(cmd_list, mach_commands, buf, &mut self.state.command_state);
 
         Block::bordered()
             .border_type(BorderType::Plain)

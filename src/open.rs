@@ -1,8 +1,8 @@
-use macho::{self, Macho};
-
 use std::fs;
 use std::io::Read;
 use std::{fs::File, path::Path};
+
+use macho::Macho;
 
 pub enum BinaryFile {
     Macho(Macho),

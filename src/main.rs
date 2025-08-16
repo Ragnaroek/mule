@@ -1,6 +1,10 @@
-mod macho;
+mod macho_view;
 mod open;
 
+use crate::{
+    macho_view::MachoInteractiveState, macho_view::MachoWidget, open::BinaryFile,
+    open::open_binary_file,
+};
 use crossterm::event::{self, Event, KeyCode, KeyEventKind};
 use ratatui::{
     DefaultTerminal, Frame,
@@ -10,11 +14,6 @@ use ratatui::{
     widgets::{Block, BorderType, Paragraph, Widget},
 };
 use std::{path::PathBuf, str::FromStr};
-
-use crate::{
-    macho::MachoWidget,
-    open::{BinaryFile, open_binary_file},
-};
 
 fn main() -> Result<(), String> {
     let mut terminal = ratatui::init();
@@ -29,6 +28,11 @@ enum InputMode {
     Interactive, // Focus is on the display widget
 }
 
+pub enum InteractiveState {
+    None,
+    Macho(MachoInteractiveState),
+}
+
 struct BinaryState {
     path: PathBuf,
     file: BinaryFile,
@@ -36,6 +40,7 @@ struct BinaryState {
 
 struct ProjectState {
     binary: Option<BinaryState>,
+    interactive_state: InteractiveState,
 }
 
 struct Mule {
@@ -48,7 +53,10 @@ struct Mule {
 
 impl Mule {
     pub fn new() -> Mule {
-        let project_state = ProjectState { binary: None };
+        let project_state = ProjectState {
+            binary: None,
+            interactive_state: InteractiveState::None,
+        };
 
         Mule {
             project_state,
@@ -72,7 +80,7 @@ impl Mule {
         Ok(())
     }
 
-    fn draw(&self, frame: &mut Frame) {
+    fn draw(&mut self, frame: &mut Frame) {
         frame.render_widget(self, frame.area());
     }
 
@@ -140,7 +148,10 @@ impl Mule {
                 InputMode::Interactive => {
                     match key.code {
                         KeyCode::Esc => self.input_mode = InputMode::Command,
-                        _ => { /* ignore */ }
+                        _ => match &mut self.project_state.interactive_state {
+                            InteractiveState::None => {}
+                            InteractiveState::Macho(s) => s.handle_key(key.code),
+                        },
                     }
                     // TODO forward event to current widget
                 }
@@ -166,7 +177,12 @@ impl Mule {
             self.project_state.binary = Some(BinaryState {
                 path,
                 file: binary_file,
-            })
+            });
+
+            let interactive_state = match binary_file {
+                BinaryFile::Macho(_) => MachoInteractiveState::new(),
+            };
+            self.project_state.interactive_state = InteractiveState::Macho(interactive_state);
         }
 
         self.input.clear();
@@ -176,7 +192,7 @@ impl Mule {
     }
 }
 
-impl Widget for &Mule {
+impl Widget for &mut Mule {
     fn render(self, area: Rect, buf: &mut Buffer) {
         let main_layout =
             Layout::vertical([Constraint::Max(3), Constraint::Min(0), Constraint::Max(3)]);
@@ -201,8 +217,14 @@ impl Widget for &Mule {
         if let Some(binary_state) = self.project_state.binary.as_ref() {
             match &binary_state.file {
                 BinaryFile::Macho(macho) => {
-                    let mut widget = MachoWidget::new(macho);
-                    widget.render(content, buf);
+                    if let InteractiveState::Macho(state) =
+                        &mut self.project_state.interactive_state
+                    {
+                        let mut widget = MachoWidget::new(macho, state);
+                        widget.render(content, buf);
+                    } else {
+                        panic!("BinaryFile does not match InteractiveState")
+                    }
                 }
             }
         } else {
