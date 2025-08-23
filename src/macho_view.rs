@@ -1,5 +1,5 @@
 use crossterm::event::KeyCode;
-use macho::{LoadCommand, Macho};
+use macho::{LoadCommand, Macho, Section64, Segment64Command};
 use ratatui::{
     buffer::Buffer,
     layout::{Constraint, Layout, Rect},
@@ -68,11 +68,30 @@ impl<'a> Widget for &mut MachoWidget<'a> {
             .highlight_style(Style::new().black().on_white());
         StatefulWidget::render(cmd_list, mach_commands, buf, &mut self.state.command_state);
 
-        Block::bordered()
+        let detail_block = Block::bordered()
             .border_type(BorderType::Plain)
-            .title("Details")
-            .render(content_detail, buf);
+            .title("Details");
+
+        let selected = self.state.command_state.selected();
+        if let Some(selected_pos) = selected {
+            let load_command = &self.macho.load_commands[selected_pos];
+            if let LoadCommand::Segment64(segment) = load_command {
+                let sec_list = List::new(section_list(&segment.sections))
+                    .block(detail_block)
+                    .highlight_style(Style::new().black().on_white());
+                let mut dummy_state = ListState::default();
+                StatefulWidget::render(sec_list, content_detail, buf, &mut dummy_state);
+            }
+        }
     }
+}
+
+fn section_list(segs: &[Section64]) -> Vec<&str> {
+    let mut result = Vec::with_capacity(segs.len());
+    for seg in segs {
+        result.push(seg.name.as_str());
+    }
+    result
 }
 
 fn command_list(macho: &Macho) -> Vec<String> {
