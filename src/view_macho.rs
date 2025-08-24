@@ -1,5 +1,5 @@
 use crossterm::event::KeyCode;
-use macho::{LoadCommand, Macho, Section64, Segment64Command};
+use mule_macho::{LoadCommand, Macho, Section64};
 use ratatui::{
     buffer::Buffer,
     layout::{Constraint, Layout, Rect},
@@ -44,7 +44,6 @@ impl<'a> Widget for &mut MachoWidget<'a> {
             Layout::horizontal([Constraint::Percentage(30), Constraint::Percentage(70)]);
         let [content_file, content_detail] = content_layout.areas(area);
 
-        // TODO Hights have to be computed dynamically from the Mach-O file
         let file_layout = Layout::vertical([Constraint::Max(3), Constraint::Fill(1)]);
         let [mach_header, mach_commands] = file_layout.areas(content_file);
 

@@ -8,4 +8,5 @@ authors = ["Michael Bohn <spaceodyssey@gmx.de>"]
 ratatui = "0.29.0"
 crossterm = "0.29.0"
 
-mule-macho = { path = "../mule-macho/" }
+mule_macho = { path = "../mule-macho/" }
+mule_gb = { path = "../mule-gb/" }

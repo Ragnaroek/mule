@@ -329,12 +329,20 @@ name = "mule"
 version = "0.1.0"
 dependencies = [
  "crossterm 0.29.0",
- "mule-macho",
+ "mule_gb",
+ "mule_macho",
  "ratatui",
 ]
 
 [[package]]
-name = "mule-macho"
+name = "mule_gb"
+version = "0.1.0"
+dependencies = [
+ "serde",
+]
+
+[[package]]
+name = "mule_macho"
 version = "0.1.0"
 dependencies = [
  "serde",

@@ -1,11 +1,15 @@
-mod macho_view;
 mod open;
+mod view_gb;
+mod view_macho;
 
 use crate::{
-    macho_view::MachoInteractiveState, macho_view::MachoWidget, open::BinaryFile,
-    open::open_binary_file,
+    open::{BinaryFile, open_binary_file},
+    view_gb::{GBInteractiveState, GBWidget},
+    view_macho::{MachoInteractiveState, MachoWidget},
 };
 use crossterm::event::{self, Event, KeyCode, KeyEventKind};
+use mule_gb::GBBinary;
+use mule_macho::Macho;
 use ratatui::{
     DefaultTerminal, Frame,
     buffer::Buffer,
@@ -31,6 +35,7 @@ enum InputMode {
 pub enum InteractiveState {
     None,
     Macho(MachoInteractiveState),
+    GB(GBInteractiveState),
 }
 
 struct BinaryState {
@@ -151,6 +156,7 @@ impl Mule {
                         _ => match &mut self.project_state.interactive_state {
                             InteractiveState::None => {}
                             InteractiveState::Macho(s) => s.handle_key(key.code),
+                            InteractiveState::GB(s) => s.handle_key(key.code),
                         },
                     }
                     // TODO forward event to current widget
@@ -174,15 +180,15 @@ impl Mule {
             let file_path = iter.next().expect("file_path");
             let path = PathBuf::from_str(file_path).map_err(|e| e.to_string())?;
             let binary_file = open_binary_file(&path)?;
+            let interactive_state = match &binary_file {
+                BinaryFile::Macho(_) => InteractiveState::Macho(MachoInteractiveState::new()),
+                BinaryFile::GB(_) => InteractiveState::GB(GBInteractiveState::new()),
+            };
             self.project_state.binary = Some(BinaryState {
                 path,
                 file: binary_file,
             });
-
-            let interactive_state = match binary_file {
-                BinaryFile::Macho(_) => MachoInteractiveState::new(),
-            };
-            self.project_state.interactive_state = InteractiveState::Macho(interactive_state);
+            self.project_state.interactive_state = interactive_state;
         }
 
         self.input.clear();
@@ -203,9 +209,9 @@ impl Widget for &mut Mule {
             .title("Binary");
 
         let binary_str = if let Some(binary_state) = self.project_state.binary.as_ref() {
-            let binary_str = binary_state.path.to_str().unwrap();
-            // TODO show real info from loaded binary here
-            &format!("{} (Mach-O, arm64, executable)", binary_str)
+            let binary_path = binary_state.path.to_str().unwrap();
+            let binary_name = binary_file_type_str(&binary_state.file);
+            &format!("{} ({})", binary_path, binary_name)
         } else {
             "<no binary loaded>"
         };
@@ -221,6 +227,14 @@ impl Widget for &mut Mule {
                         &mut self.project_state.interactive_state
                     {
                         let mut widget = MachoWidget::new(macho, state);
+                        widget.render(content, buf);
+                    } else {
+                        panic!("BinaryFile does not match InteractiveState")
+                    }
+                }
+                BinaryFile::GB(gb_binary) => {
+                    if let InteractiveState::GB(state) = &mut self.project_state.interactive_state {
+                        let mut widget = GBWidget::new(gb_binary, state);
                         widget.render(content, buf);
                     } else {
                         panic!("BinaryFile does not match InteractiveState")
@@ -245,5 +259,13 @@ impl Widget for &mut Mule {
             })
             .block(command_block)
             .render(command, buf);
+    }
+}
+
+fn binary_file_type_str(binary: &BinaryFile) -> String {
+    match binary {
+        BinaryFile::Macho(_) => "Mach-O".to_string(),
+        BinaryFile::GB(_) => "GameBoy ROM".to_string(),
+        _ => "Unknown".to_string(),
     }
 }
