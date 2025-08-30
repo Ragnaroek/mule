@@ -1,15 +1,15 @@
 mod open;
+mod view;
 mod view_gb;
 mod view_macho;
 
 use crate::{
     open::{BinaryFile, open_binary_file},
+    view::style_focus,
     view_gb::{GBInteractiveState, GBWidget},
     view_macho::{MachoInteractiveState, MachoWidget},
 };
 use crossterm::event::{self, Event, KeyCode, KeyEventKind};
-use mule_gb::GBBinary;
-use mule_macho::Macho;
 use ratatui::{
     DefaultTerminal, Frame,
     buffer::Buffer,
@@ -36,6 +36,12 @@ pub enum InteractiveState {
     None,
     Macho(MachoInteractiveState),
     GB(GBInteractiveState),
+}
+
+pub enum InteractiveCommand {
+    Focus,
+    Unfocus,
+    Key(KeyCode),
 }
 
 struct BinaryState {
@@ -152,18 +158,25 @@ impl Mule {
                 },
                 InputMode::Interactive => {
                     match key.code {
-                        KeyCode::Esc => self.input_mode = InputMode::Command,
-                        _ => match &mut self.project_state.interactive_state {
-                            InteractiveState::None => {}
-                            InteractiveState::Macho(s) => s.handle_key(key.code),
-                            InteractiveState::GB(s) => s.handle_key(key.code),
-                        },
+                        KeyCode::Esc => {
+                            self.forward_command(InteractiveCommand::Unfocus);
+                            self.input_mode = InputMode::Command;
+                        }
+                        _ => self.forward_command(InteractiveCommand::Key(key.code)),
                     }
                     // TODO forward event to current widget
                 }
             }
         }
         Ok(false)
+    }
+
+    fn forward_command(&mut self, command: InteractiveCommand) {
+        match &mut self.project_state.interactive_state {
+            InteractiveState::None => {}
+            InteractiveState::Macho(s) => s.handle_command(command),
+            InteractiveState::GB(s) => s.handle_command(command),
+        }
     }
 
     fn exec_command(&mut self) -> Result<bool, String> {
@@ -189,6 +202,8 @@ impl Mule {
                 file: binary_file,
             });
             self.project_state.interactive_state = interactive_state;
+        } else if input_cmd.starts_with(":i") {
+            self.forward_command(InteractiveCommand::Focus);
         }
 
         self.input.clear();
@@ -255,7 +270,7 @@ impl Widget for &mut Mule {
         Paragraph::new(self.input.as_str())
             .style(match self.input_mode {
                 InputMode::Interactive => Style::default(),
-                InputMode::Command => Style::default().fg(Color::Yellow),
+                InputMode::Command => style_focus(),
             })
             .block(command_block)
             .render(command, buf);

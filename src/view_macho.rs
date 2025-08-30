@@ -7,23 +7,74 @@ use ratatui::{
     widgets::{Block, BorderType, List, ListState, Paragraph, StatefulWidget, Widget},
 };
 
+use crate::{
+    InteractiveCommand,
+    view::{style_focus, style_normal},
+};
+
+#[derive(PartialEq, Copy, Clone)]
+enum Focus {
+    None,
+    Header,
+    LoadCommands,
+    DetailView,
+}
+
+static FOCUS_CYCLE_ORDER: [Focus; 3] = [Focus::Header, Focus::LoadCommands, Focus::DetailView];
+
 pub struct MachoInteractiveState {
-    pub command_state: ListState,
+    previous_focus: Focus,
+    focus_on: Focus,
+    command_state: ListState,
 }
 
 impl MachoInteractiveState {
     pub fn new() -> MachoInteractiveState {
         let mut command_state = ListState::default();
         command_state.select(Some(0));
-        MachoInteractiveState { command_state }
+        MachoInteractiveState {
+            command_state,
+            previous_focus: Focus::None,
+            focus_on: Focus::LoadCommands,
+        }
     }
 
-    pub fn handle_key(&mut self, key: KeyCode) {
-        match key {
-            KeyCode::Down => self.command_state.select_next(),
-            KeyCode::Up => self.command_state.select_previous(),
-            _ => {}
+    pub fn handle_command(&mut self, command: InteractiveCommand) {
+        match command {
+            InteractiveCommand::Key(key) => {
+                match key {
+                    KeyCode::Tab => self.move_focus(1),
+                    KeyCode::BackTab => self.move_focus(-1),
+                    KeyCode::Down => self.command_state.select_next(),
+                    KeyCode::Up => self.command_state.select_previous(),
+                    _ => { /* ignore */ }
+                }
+            }
+            InteractiveCommand::Focus => {
+                self.focus_on = self.previous_focus;
+            }
+            InteractiveCommand::Unfocus => {
+                self.previous_focus = self.focus_on;
+                self.focus_on = Focus::None;
+            }
         }
+    }
+
+    fn move_focus(&mut self, dir: isize) {
+        let mut ix_focus = 0;
+        for i in 0..FOCUS_CYCLE_ORDER.len() {
+            if FOCUS_CYCLE_ORDER[i] == self.focus_on {
+                ix_focus = i as isize;
+            }
+        }
+        ix_focus += dir;
+        let ix = if ix_focus < 0 {
+            (FOCUS_CYCLE_ORDER.len() as isize + ix_focus) as usize
+        } else {
+            ix_focus as usize % FOCUS_CYCLE_ORDER.len()
+        };
+
+        self.focus_on = FOCUS_CYCLE_ORDER[ix];
     }
 }
 
@@ -35,6 +86,14 @@ pub struct MachoWidget<'a> {
 impl<'a> MachoWidget<'a> {
     pub fn new(macho: &'a Macho, state: &'a mut MachoInteractiveState) -> MachoWidget<'a> {
         MachoWidget { macho, state }
+    }
+
+    fn focus_style(&self, focus: Focus) -> Style {
+        if self.state.focus_on == focus {
+            style_focus()
+        } else {
+            style_normal()
+        }
     }
 }
 
@@ -49,6 +108,7 @@ impl<'a> Widget for &mut MachoWidget<'a> {
 
         let header_block = Block::bordered()
             .border_type(BorderType::Plain)
+            .style(self.focus_style(Focus::Header))
             .title("Header");
 
         Paragraph::new(format!(
@@ -60,6 +120,7 @@ impl<'a> Widget for &mut MachoWidget<'a> {
 
         let command_block = Block::bordered()
             .border_type(BorderType::Plain)
+            .style(self.focus_style(Focus::LoadCommands))
             .title(format!("Load Commands ({})", self.macho.header.no_cmds));
 
         let cmd_list = List::new(command_list(self.macho))
@@ -69,6 +130,7 @@ impl<'a> Widget for &mut MachoWidget<'a> {
 
         let detail_block = Block::bordered()
             .border_type(BorderType::Plain)
+            .style(self.focus_style(Focus::DetailView))
             .title("Details");
 
         let selected = self.state.command_state.selected();

@@ -6,20 +6,81 @@ use ratatui::{
     widgets::{Block, BorderType, List, ListState, Paragraph, StatefulWidget, Widget},
 };
 
-use mule_gb::{GBBinary, ROMSize, num_banks};
+use mule_gb::{GBBinary, num_banks};
+
+use crate::{
+    InteractiveCommand,
+    view::{style_focus, style_normal},
+};
+
+#[derive(PartialEq, Clone, Copy)]
+enum Focus {
+    None,
+    Vectors,
+    Header,
+    Banks,
+    DetailView,
+}
+
+static FOCUS_CYCLE_ORDER: [Focus; 4] = [
+    Focus::Vectors,
+    Focus::Header,
+    Focus::Banks,
+    Focus::DetailView,
+];
 
 pub struct GBInteractiveState {
-    pub command_state: ListState,
+    previous_focus: Focus,
+    focus_on: Focus,
+    command_state: ListState,
 }
 
 impl GBInteractiveState {
     pub fn new() -> GBInteractiveState {
         let mut command_state = ListState::default();
         command_state.select(Some(0));
-        GBInteractiveState { command_state }
+        GBInteractiveState {
+            command_state,
+            previous_focus: Focus::None,
+            focus_on: Focus::Banks,
+        }
     }
 
-    pub fn handle_key(&mut self, key: KeyCode) {}
+    pub fn handle_command(&mut self, command: InteractiveCommand) {
+        match command {
+            InteractiveCommand::Key(key) => {
+                match key {
+                    KeyCode::Tab => self.move_focus(1),
+                    KeyCode::BackTab => self.move_focus(-1),
+                    _ => { /* ignore */ }
+                }
+            }
+            InteractiveCommand::Focus => {
+                self.focus_on = self.previous_focus;
+            }
+            InteractiveCommand::Unfocus => {
+                self.previous_focus = self.focus_on;
+                self.focus_on = Focus::None;
+            }
+        }
+    }
+
+    fn move_focus(&mut self, dir: isize) {
+        let mut ix_focus = 0;
+        for i in 0..FOCUS_CYCLE_ORDER.len() {
+            if FOCUS_CYCLE_ORDER[i] == self.focus_on {
+                ix_focus = i as isize;
+            }
+        }
+        ix_focus += dir;
+        let ix = if ix_focus < 0 {
+            (FOCUS_CYCLE_ORDER.len() as isize + ix_focus) as usize
+        } else {
+            ix_focus as usize % FOCUS_CYCLE_ORDER.len()
+        };
+
+        self.focus_on = FOCUS_CYCLE_ORDER[ix];
+    }
 }
 
 pub struct GBWidget<'a> {
@@ -30,6 +91,14 @@ pub struct GBWidget<'a> {
 impl<'a> GBWidget<'a> {
     pub fn new(gb_binary: &'a GBBinary, state: &'a mut GBInteractiveState) -> GBWidget<'a> {
         GBWidget { gb_binary, state }
+    }
+
+    fn focus_style(&self, focus: Focus) -> Style {
+        if self.state.focus_on == focus {
+            style_focus()
+        } else {
+            style_normal()
+        }
     }
 }
 
@@ -45,6 +114,7 @@ impl<'a> Widget for &mut GBWidget<'a> {
 
         let vector_block = Block::bordered()
             .border_type(BorderType::Plain)
+            .style(self.focus_style(Focus::Vectors))
             .title("Interrupt Vectors");
 
         Paragraph::new(format!("TODO Vectors",))
@@ -53,6 +123,7 @@ impl<'a> Widget for &mut GBWidget<'a> {
 
         let header_block = Block::bordered()
             .border_type(BorderType::Plain)
+            .style(self.focus_style(Focus::Header))
             .title("Header");
 
         Paragraph::new(format!(
@@ -64,6 +135,7 @@ impl<'a> Widget for &mut GBWidget<'a> {
 
         let bank_block = Block::bordered()
             .border_type(BorderType::Plain)
+            .style(self.focus_style(Focus::Banks))
             .title(format!(
                 "Banks ({})",
                 num_banks(self.gb_binary.header.rom_size)
@@ -76,6 +148,7 @@ impl<'a> Widget for &mut GBWidget<'a> {
 
         let detail_block = Block::bordered()
             .border_type(BorderType::Plain)
+            .style(self.focus_style(Focus::DetailView))
             .title("Details")
             .render(content_detail, buf);
     }
