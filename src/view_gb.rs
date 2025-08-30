@@ -19,28 +19,22 @@ enum Focus {
     Vectors,
     Header,
     Banks,
-    DetailView,
 }
 
-static FOCUS_CYCLE_ORDER: [Focus; 4] = [
-    Focus::Vectors,
-    Focus::Header,
-    Focus::Banks,
-    Focus::DetailView,
-];
+static FOCUS_CYCLE_ORDER: [Focus; 3] = [Focus::Vectors, Focus::Header, Focus::Banks];
 
 pub struct GBInteractiveState {
     previous_focus: Focus,
     focus_on: Focus,
-    command_state: ListState,
+    bank_list_state: ListState,
 }
 
 impl GBInteractiveState {
     pub fn new() -> GBInteractiveState {
-        let mut command_state = ListState::default();
-        command_state.select(Some(0));
+        let mut bank_list_state = ListState::default();
+        bank_list_state.select(Some(0));
         GBInteractiveState {
-            command_state,
+            bank_list_state,
             previous_focus: Focus::None,
             focus_on: Focus::Banks,
         }
@@ -52,6 +46,16 @@ impl GBInteractiveState {
                 match key {
                     KeyCode::Tab => self.move_focus(1),
                     KeyCode::BackTab => self.move_focus(-1),
+                    KeyCode::Down => {
+                        if self.focus_on == Focus::Banks {
+                            self.bank_list_state.select_next();
+                        }
+                    }
+                    KeyCode::Up => {
+                        if self.focus_on == Focus::Banks {
+                            self.bank_list_state.select_previous();
+                        }
+                    }
                     _ => { /* ignore */ }
                 }
             }
@@ -144,11 +148,10 @@ impl<'a> Widget for &mut GBWidget<'a> {
         let cmd_list = List::new(bank_list(self.gb_binary))
             .block(bank_block)
             .highlight_style(Style::new().black().on_white());
-        StatefulWidget::render(cmd_list, gb_banks, buf, &mut ListState::default());
+        StatefulWidget::render(cmd_list, gb_banks, buf, &mut self.state.bank_list_state);
 
         let detail_block = Block::bordered()
             .border_type(BorderType::Plain)
-            .style(self.focus_style(Focus::DetailView))
             .title("Details")
             .render(content_detail, buf);
     }

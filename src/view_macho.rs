@@ -17,23 +17,22 @@ enum Focus {
     None,
     Header,
     LoadCommands,
-    DetailView,
 }
 
-static FOCUS_CYCLE_ORDER: [Focus; 3] = [Focus::Header, Focus::LoadCommands, Focus::DetailView];
+static FOCUS_CYCLE_ORDER: [Focus; 2] = [Focus::Header, Focus::LoadCommands];
 
 pub struct MachoInteractiveState {
     previous_focus: Focus,
     focus_on: Focus,
-    command_state: ListState,
+    command_list_state: ListState,
 }
 
 impl MachoInteractiveState {
     pub fn new() -> MachoInteractiveState {
-        let mut command_state = ListState::default();
-        command_state.select(Some(0));
+        let mut command_list_state = ListState::default();
+        command_list_state.select(Some(0));
         MachoInteractiveState {
-            command_state,
+            command_list_state,
             previous_focus: Focus::None,
             focus_on: Focus::LoadCommands,
         }
@@ -45,8 +44,16 @@ impl MachoInteractiveState {
                 match key {
                     KeyCode::Tab => self.move_focus(1),
                     KeyCode::BackTab => self.move_focus(-1),
-                    KeyCode::Down => self.command_state.select_next(),
-                    KeyCode::Up => self.command_state.select_previous(),
+                    KeyCode::Down => {
+                        if self.focus_on == Focus::LoadCommands {
+                            self.command_list_state.select_next();
+                        }
+                    }
+                    KeyCode::Up => {
+                        if self.focus_on == Focus::LoadCommands {
+                            self.command_list_state.select_previous();
+                        }
+                    }
                     _ => { /* ignore */ }
                 }
             }
@@ -126,14 +133,18 @@ impl<'a> Widget for &mut MachoWidget<'a> {
         let cmd_list = List::new(command_list(self.macho))
             .block(command_block)
             .highlight_style(Style::new().black().on_white());
-        StatefulWidget::render(cmd_list, mach_commands, buf, &mut self.state.command_state);
+        StatefulWidget::render(
+            cmd_list,
+            mach_commands,
+            buf,
+            &mut self.state.command_list_state,
+        );
 
         let detail_block = Block::bordered()
             .border_type(BorderType::Plain)
-            .style(self.focus_style(Focus::DetailView))
             .title("Details");
 
-        let selected = self.state.command_state.selected();
+        let selected = self.state.command_list_state.selected();
         if let Some(selected_pos) = selected {
             let load_command = &self.macho.load_commands[selected_pos];
             if let LoadCommand::Segment64(segment) = load_command {
