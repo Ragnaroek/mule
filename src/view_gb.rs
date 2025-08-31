@@ -3,13 +3,14 @@ use ratatui::{
     buffer::Buffer,
     layout::{Constraint, Layout, Rect},
     style::{Style, Stylize},
-    widgets::{Block, BorderType, List, ListState, Paragraph, StatefulWidget, Widget},
+    widgets::{Block, BorderType, List, ListState, Paragraph, StatefulWidget, Widget, WidgetRef},
 };
 
 use mule_gb::{GBBinary, num_banks};
 
 use crate::{
     InteractiveCommand,
+    hex::Hex,
     view::{style_focus, style_normal},
 };
 
@@ -104,6 +105,26 @@ impl<'a> GBWidget<'a> {
             style_normal()
         }
     }
+
+    fn render_detail_view(&self, content_detail: Rect, buf: &mut Buffer) {
+        let detail_block = Block::bordered()
+            .border_type(BorderType::Plain)
+            .title("Details");
+
+        match self.state.focus_on {
+            Focus::None => {}
+            Focus::Vectors => {} // TODO
+            Focus::Header => {}  // TODO
+            Focus::Banks => {
+                let selected = self.state.bank_list_state.selected();
+                if let Some(selected_pos) = selected {
+                    let bank = &self.gb_binary.bank_data[selected_pos];
+                    let hex = &Hex::new(bank).block(detail_block);
+                    hex.render_ref(content_detail, buf);
+                }
+            }
+        }
+    }
 }
 
 impl<'a> Widget for &mut GBWidget<'a> {
@@ -150,10 +171,7 @@ impl<'a> Widget for &mut GBWidget<'a> {
             .highlight_style(Style::new().black().on_white());
         StatefulWidget::render(cmd_list, gb_banks, buf, &mut self.state.bank_list_state);
 
-        let detail_block = Block::bordered()
-            .border_type(BorderType::Plain)
-            .title("Details")
-            .render(content_detail, buf);
+        self.render_detail_view(content_detail, buf);
     }
 }
 

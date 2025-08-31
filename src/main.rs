@@ -1,3 +1,4 @@
+mod hex;
 mod open;
 mod view;
 mod view_gb;
