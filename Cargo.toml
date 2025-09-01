@@ -10,3 +10,4 @@ crossterm = "0.29.0"
 
 mule_macho = { path = "../mule-macho/" }
 mule_gb = { path = "../mule-gb/" }
+psy = { path = "../../psy" }

@@ -196,7 +196,7 @@ impl Mule {
             let binary_file = open_binary_file(&path)?;
             let interactive_state = match &binary_file {
                 BinaryFile::Macho(_) => InteractiveState::Macho(MachoInteractiveState::new()),
-                BinaryFile::GB(_) => InteractiveState::GB(GBInteractiveState::new()),
+                BinaryFile::GB(binary) => InteractiveState::GB(GBInteractiveState::new(binary)),
             };
             self.project_state.binary = Some(BinaryState {
                 path,
