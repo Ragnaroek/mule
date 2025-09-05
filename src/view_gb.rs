@@ -9,7 +9,7 @@ use ratatui::{
     },
 };
 
-use mule_gb::{DestinationCode, GBBinary, GBCFlag, Header, RAMSize, ROMSize, SGBFlag, num_banks};
+use mule_gb::{DestinationCode, GBBinary, GBCFlag, RAMSize, ROMSize, SGBFlag, num_banks};
 use psy::dasm::gb;
 
 use crate::{
@@ -145,6 +145,10 @@ impl<'a> GBWidget<'a> {
 
     fn render_header_detail(&self, block: Block, content_detail: Rect, buf: &mut Buffer) {
         let entry_text = self.state.disassembles.entry_point.join("");
+        let logo_row_0_text = &logo_row(0, &self.gb_binary.header.logo_data);
+        let logo_row_1_text = &logo_row(1, &self.gb_binary.header.logo_data);
+        let logo_row_2_text = &logo_row(2, &self.gb_binary.header.logo_data);
+        let logo_row_3_text = &logo_row(3, &self.gb_binary.header.logo_data);
         let manufacturer_text = manufacturer_display(&self.gb_binary.header.manufacturer_code);
         let licensee_text = &format!("{:?}", self.gb_binary.header.licensee_code);
         let cartridge_text = &format!("{:?}", self.gb_binary.header.cartridge_type);
@@ -155,6 +159,11 @@ impl<'a> GBWidget<'a> {
         let checksum_text = &format!("{}", self.gb_binary.header.checksum);
         let global_checksum_text = &format!("{}", self.gb_binary.header.global_checksum);
         let rows = [
+            Row::new(vec!["Logo:", logo_row_0_text]),
+            Row::new(vec!["     ", logo_row_1_text]),
+            Row::new(vec!["     ", logo_row_2_text]),
+            Row::new(vec!["     ", logo_row_3_text]),
+            Row::new(vec!["", ""]),
             Row::new(vec!["Entry Point:", &entry_text]),
             Row::new(vec!["Game Title:", &self.gb_binary.header.game_title]),
             Row::new(vec!["Manufacturer Code:", manufacturer_text]),
@@ -178,6 +187,63 @@ impl<'a> GBWidget<'a> {
         let widths = [Constraint::Length(22), Constraint::Fill(1)];
         let table = Table::new(rows, widths).block(block);
         Widget::render(table, content_detail, buf);
+    }
+}
+
+fn logo_row(row: usize, logo_data: &[u8]) -> String {
+    let mut result = String::new();
+    let dis = row % 2;
+    let offset = if row >= 2 { 24 } else { 0 };
+    for i in (0..24).step_by(2) {
+        let b = logo_data[offset + i + dis];
+        let l0 = (b & 0xF0) >> 4;
+        let l1 = b & 0xF;
+        for s in (0..2).rev() {
+            let mask = 0b11 << (s * 2);
+            let l0_r = (l0 & mask) >> (s * 2);
+            let l1_r = (l1 & mask) >> (s * 2);
+            result.push(pixel_char(l0_r, l1_r))
+        }
+    }
+
+    result
+}
+
+fn pixel_char(l0: u8, l1: u8) -> char {
+    if l0 == 0b11 && l1 == 0b11 {
+        '\u{2588}'
+    } else if l0 == 0b11 && l1 == 0b01 {
+        '\u{259C}'
+    } else if l0 == 0b11 && l1 == 0b10 {
+        '\u{259B}'
+    } else if l0 == 0b11 && l1 == 0b00 {
+        '\u{2580}'
+    } else if l0 == 0b10 && l1 == 0b11 {
+        '\u{2599}'
+    } else if l0 == 0b10 && l1 == 0b01 {
+        '\u{259A}'
+    } else if l0 == 0b10 && l1 == 0b10 {
+        '\u{258C}'
+    } else if l0 == 0b10 && l1 == 0b00 {
+        '\u{2598}'
+    } else if l0 == 0b01 && l1 == 0b11 {
+        '\u{259F}'
+    } else if l0 == 0b01 && l1 == 0b01 {
+        '\u{2590}'
+    } else if l0 == 0b01 && l1 == 0b10 {
+        '\u{259E}'
+    } else if l0 == 0b01 && l1 == 0b00 {
+        '\u{259D}'
+    } else if l0 == 0b00 && l1 == 0b11 {
+        '\u{2584}'
+    } else if l0 == 0b00 && l1 == 0b01 {
+        '\u{2597}'
+    } else if l0 == 0b00 && l1 == 0b10 {
+        '\u{2596}'
+    } else if l0 == 0b00 && l1 == 0b00 {
+        ' '
+    } else {
+        panic!("illegal combination: {:x} {:x}", l0, l1)
     }
 }
 

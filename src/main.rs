@@ -282,6 +282,5 @@ fn binary_file_type_str(binary: &BinaryFile) -> String {
     match binary {
         BinaryFile::Macho(_) => "Mach-O".to_string(),
         BinaryFile::GB(_) => "GameBoy ROM".to_string(),
-        _ => "Unknown".to_string(),
     }
 }
