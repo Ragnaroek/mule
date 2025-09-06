@@ -3,6 +3,7 @@ use ratatui::{
     buffer::Buffer,
     layout::{Constraint, Layout, Rect},
     style::{Style, Stylize},
+    symbols::bar::NINE_LEVELS,
     widgets::{
         Block, BorderType, List, ListState, Paragraph, Row, StatefulWidget, Table, Widget,
         WidgetRef,
@@ -21,16 +22,36 @@ use crate::{
 #[derive(PartialEq, Clone, Copy)]
 enum Focus {
     None,
-    Vectors,
+    Restarts,
+    Interrupts,
     Header,
     Banks,
 }
 
-static FOCUS_CYCLE_ORDER: [Focus; 3] = [Focus::Vectors, Focus::Header, Focus::Banks];
+static FOCUS_CYCLE_ORDER: [Focus; 4] = [
+    Focus::Restarts,
+    Focus::Interrupts,
+    Focus::Header,
+    Focus::Banks,
+];
 
 /// Cached disassembles that are only computed once
 struct GBDisassembles {
     entry_point: Vec<String>,
+
+    interrupt_v_blank: Vec<String>,
+    interrupt_lcd_stat: Vec<String>,
+    interrupt_timer: Vec<String>,
+    interrupt_serial: Vec<String>,
+    interrupt_joypad: Vec<String>,
+    rst_0: Vec<String>,
+    rst_1: Vec<String>,
+    rst_2: Vec<String>,
+    rst_3: Vec<String>,
+    rst_4: Vec<String>,
+    rst_5: Vec<String>,
+    rst_6: Vec<String>,
+    rst_7: Vec<String>,
 }
 
 pub struct GBInteractiveState {
@@ -45,16 +66,26 @@ impl GBInteractiveState {
         let mut bank_list_state = ListState::default();
         bank_list_state.select(Some(0));
 
-        let entry_point = match gb::disassemble(&binary.header.entry_point) {
-            Err(err) => vec![format!("Err disassemble: {}", err)],
-            Ok(dis) => dis,
-        };
-
         GBInteractiveState {
             bank_list_state,
             previous_focus: Focus::None,
             focus_on: Focus::Header,
-            disassembles: GBDisassembles { entry_point },
+            disassembles: GBDisassembles {
+                entry_point: disassemble(&binary.header.entry_point),
+                interrupt_v_blank: disassemble(&binary.interrupts.v_blank),
+                interrupt_lcd_stat: disassemble(&binary.interrupts.lcd_stat),
+                interrupt_timer: disassemble(&binary.interrupts.timer),
+                interrupt_serial: disassemble(&binary.interrupts.serial),
+                interrupt_joypad: disassemble(&binary.interrupts.joypad),
+                rst_0: disassemble(&binary.restart_calls.rst_0),
+                rst_1: disassemble(&binary.restart_calls.rst_1),
+                rst_2: disassemble(&binary.restart_calls.rst_2),
+                rst_3: disassemble(&binary.restart_calls.rst_3),
+                rst_4: disassemble(&binary.restart_calls.rst_4),
+                rst_5: disassemble(&binary.restart_calls.rst_5),
+                rst_6: disassemble(&binary.restart_calls.rst_6),
+                rst_7: disassemble(&binary.restart_calls.rst_7),
+            },
         }
     }
 
@@ -105,6 +136,13 @@ impl GBInteractiveState {
     }
 }
 
+fn disassemble(data: &[u8]) -> Vec<String> {
+    match gb::disassemble(data) {
+        Err(err) => vec![format!("Err disassemble: {}", err)],
+        Ok(dis) => dis,
+    }
+}
+
 pub struct GBWidget<'a> {
     pub gb_binary: &'a GBBinary,
     pub state: &'a mut GBInteractiveState,
@@ -130,7 +168,8 @@ impl<'a> GBWidget<'a> {
 
         match self.state.focus_on {
             Focus::None => { /* do nothing */ }
-            Focus::Vectors => {} // TODO
+            Focus::Restarts => self.render_restart_detail(detail_block, content_detail, buf),
+            Focus::Interrupts => self.render_interrupt_detail(detail_block, content_detail, buf),
             Focus::Header => self.render_header_detail(detail_block, content_detail, buf),
             Focus::Banks => {
                 let selected = self.state.bank_list_state.selected();
@@ -141,6 +180,50 @@ impl<'a> GBWidget<'a> {
                 }
             }
         }
+    }
+
+    fn render_restart_detail(&self, block: Block, content_detail: Rect, buf: &mut Buffer) {
+        let rst_0 = self.state.disassembles.rst_0.join("");
+        let rst_1 = self.state.disassembles.rst_1.join("");
+        let rst_2 = self.state.disassembles.rst_2.join("");
+        let rst_3 = self.state.disassembles.rst_3.join("");
+        let rst_4 = self.state.disassembles.rst_4.join("");
+        let rst_5 = self.state.disassembles.rst_5.join("");
+        let rst_6 = self.state.disassembles.rst_6.join("");
+        let rst_7 = self.state.disassembles.rst_7.join("");
+        let rows = [
+            Row::new(vec!["RST 0:", &rst_0]),
+            Row::new(vec!["RST 1:", &rst_1]),
+            Row::new(vec!["RST 2:", &rst_2]),
+            Row::new(vec!["RST 3:", &rst_3]),
+            Row::new(vec!["RST 4:", &rst_4]),
+            Row::new(vec!["RST 5:", &rst_5]),
+            Row::new(vec!["RST 6:", &rst_6]),
+            Row::new(vec!["RST 7:", &rst_7]),
+        ];
+
+        let widths = [Constraint::Length(7), Constraint::Fill(1)];
+        let table = Table::new(rows, widths).block(block);
+        Widget::render(table, content_detail, buf);
+    }
+
+    fn render_interrupt_detail(&self, block: Block, content_detail: Rect, buf: &mut Buffer) {
+        let v_blank = self.state.disassembles.interrupt_v_blank.join("");
+        let lcd_stat = self.state.disassembles.interrupt_lcd_stat.join("");
+        let timer = self.state.disassembles.interrupt_timer.join("");
+        let serial = self.state.disassembles.interrupt_serial.join("");
+        let joypad = self.state.disassembles.interrupt_joypad.join("");
+        let rows = [
+            Row::new(vec!["V-Blank:", &v_blank]),
+            Row::new(vec!["LCD-Stat:", &lcd_stat]),
+            Row::new(vec!["Timer:", &timer]),
+            Row::new(vec!["Serial:", &serial]),
+            Row::new(vec!["Joypad:", &joypad]),
+        ];
+
+        let widths = [Constraint::Length(10), Constraint::Fill(1)];
+        let table = Table::new(rows, widths).block(block);
+        Widget::render(table, content_detail, buf);
     }
 
     fn render_header_detail(&self, block: Block, content_detail: Rect, buf: &mut Buffer) {
@@ -307,24 +390,40 @@ impl<'a> Widget for &mut GBWidget<'a> {
             Layout::horizontal([Constraint::Percentage(30), Constraint::Percentage(70)]);
         let [content_file, content_detail] = content_layout.areas(area);
 
-        let file_layout =
-            Layout::vertical([Constraint::Max(3), Constraint::Max(3), Constraint::Fill(1)]);
-        let [gb_vectors, gb_header, gb_banks] = file_layout.areas(content_file);
+        let file_layout = Layout::vertical([
+            Constraint::Max(3),
+            Constraint::Max(3),
+            Constraint::Max(3),
+            Constraint::Fill(1),
+        ]);
+        let [gb_restarts, gb_interrupts, gb_header, gb_banks] = file_layout.areas(content_file);
 
-        let vector_block = Block::bordered()
+        let restart_block = Block::bordered()
             .border_type(BorderType::Plain)
-            .style(self.focus_style(Focus::Vectors))
-            .title("Interrupt Vectors");
+            .style(self.focus_style(Focus::Restarts))
+            .title("Restart Calls");
+        Paragraph::new(format!(
+            "Non-default restarts: {}",
+            non_default_restarts(self.gb_binary)
+        ))
+        .block(restart_block)
+        .render(gb_restarts, buf);
 
-        Paragraph::new(format!("TODO Vectors",))
-            .block(vector_block)
-            .render(gb_vectors, buf);
+        let interrupt_block = Block::bordered()
+            .border_type(BorderType::Plain)
+            .style(self.focus_style(Focus::Interrupts))
+            .title("Interrupts");
+        Paragraph::new(format!(
+            "Non-Default interrupts: {}",
+            non_default_interrupts(self.gb_binary)
+        ))
+        .block(interrupt_block)
+        .render(gb_interrupts, buf);
 
         let header_block = Block::bordered()
             .border_type(BorderType::Plain)
             .style(self.focus_style(Focus::Header))
             .title("Header");
-
         Paragraph::new(format!(
             "title:{} | type:{:?}",
             self.gb_binary.header.game_title, self.gb_binary.header.cartridge_type
@@ -347,6 +446,64 @@ impl<'a> Widget for &mut GBWidget<'a> {
 
         self.render_detail_view(content_detail, buf);
     }
+}
+
+fn non_default_restarts(binary: &GBBinary) -> usize {
+    let mut n = 0;
+    if !default_vector(&binary.restart_calls.rst_0) {
+        n += 1
+    }
+    if !default_vector(&binary.restart_calls.rst_1) {
+        n += 1
+    }
+    if !default_vector(&binary.restart_calls.rst_2) {
+        n += 1
+    }
+    if !default_vector(&binary.restart_calls.rst_3) {
+        n += 1
+    }
+    if !default_vector(&binary.restart_calls.rst_4) {
+        n += 1
+    }
+    if !default_vector(&binary.restart_calls.rst_5) {
+        n += 1
+    }
+    if !default_vector(&binary.restart_calls.rst_6) {
+        n += 1
+    }
+    if !default_vector(&binary.restart_calls.rst_7) {
+        n += 1
+    }
+    n
+}
+
+fn non_default_interrupts(binary: &GBBinary) -> usize {
+    let mut n = 0;
+    if !default_vector(&binary.interrupts.v_blank) {
+        n += 1;
+    }
+    if !default_vector(&binary.interrupts.lcd_stat) {
+        n += 1;
+    }
+    if !default_vector(&binary.interrupts.timer) {
+        n += 1;
+    }
+    if !default_vector(&binary.interrupts.serial) {
+        n += 1;
+    }
+    if !default_vector(&binary.interrupts.joypad) {
+        n += 1;
+    }
+    n
+}
+
+fn default_vector(data: &[u8]) -> bool {
+    for i in 0..data.len() {
+        if data[i] != 0xFF {
+            return false;
+        }
+    }
+    true
 }
 
 fn bank_list(binary: &GBBinary) -> Vec<String> {
