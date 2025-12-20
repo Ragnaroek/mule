@@ -52,12 +52,15 @@ struct GBDisassembles {
     rst_5: Vec<String>,
     rst_6: Vec<String>,
     rst_7: Vec<String>,
+
+    banks: Vec<Vec<String>>,
 }
 
 pub struct GBInteractiveState {
     previous_focus: Focus,
     focus_on: Focus,
     bank_list_state: ListState,
+    show_bank_disassemble: bool,
     disassembles: GBDisassembles,
 }
 
@@ -66,10 +69,16 @@ impl GBInteractiveState {
         let mut bank_list_state = ListState::default();
         bank_list_state.select(Some(0));
 
+        let mut banks = Vec::with_capacity(binary.bank_data.len());
+        for bank in &binary.bank_data {
+            banks.push(disassemble(bank));
+        }
+
         GBInteractiveState {
             bank_list_state,
             previous_focus: Focus::None,
             focus_on: Focus::Header,
+            show_bank_disassemble: true,
             disassembles: GBDisassembles {
                 entry_point: disassemble(&binary.header.entry_point),
                 interrupt_v_blank: disassemble(&binary.interrupts.v_blank),
@@ -85,6 +94,7 @@ impl GBInteractiveState {
                 rst_5: disassemble(&binary.restart_calls.rst_5),
                 rst_6: disassemble(&binary.restart_calls.rst_6),
                 rst_7: disassemble(&binary.restart_calls.rst_7),
+                banks,
             },
         }
     }
@@ -174,9 +184,14 @@ impl<'a> GBWidget<'a> {
             Focus::Banks => {
                 let selected = self.state.bank_list_state.selected();
                 if let Some(selected_pos) = selected {
-                    let bank = &self.gb_binary.bank_data[selected_pos];
-                    let hex = &Hex::new(bank).block(detail_block);
-                    hex.render_ref(content_detail, buf);
+                    if self.state.show_bank_disassemble {
+                        let txt = self.state.disassembles.banks[selected_pos].join("\n");
+                        Paragraph::new(txt).render_ref(content_detail, buf);
+                    } else {
+                        let bank = &self.gb_binary.bank_data[selected_pos];
+                        let hex = &Hex::new(bank).block(detail_block);
+                        hex.render_ref(content_detail, buf);
+                    }
                 }
             }
         }
