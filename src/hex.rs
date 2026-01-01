@@ -1,7 +1,7 @@
 use ratatui::{
     buffer::Buffer,
     layout::Rect,
-    widgets::{Block, Paragraph, WidgetRef},
+    widgets::{Block, Paragraph, Widget, WidgetRef},
 };
 
 pub struct Hex<'a> {
@@ -20,9 +20,7 @@ impl<'a> Hex<'a> {
     }
 
     fn render_hex(&self, area: Rect, buf: &mut Buffer) {
-        Paragraph::new(hex_data_string(self.data, area.width))
-            //.scroll((0, 4))
-            .render_ref(area, buf);
+        Paragraph::new(hex_data_string(self.data, area.width)).render(area, buf);
 
         //let scrollbar = Scrollbar::new(ScrollbarOrientation::VerticalRight);
         //let mut scrollbar_state = ScrollbarState::new(1000);

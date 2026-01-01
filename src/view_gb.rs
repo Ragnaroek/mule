@@ -2,8 +2,7 @@ use crossterm::event::KeyCode;
 use ratatui::{
     buffer::Buffer,
     layout::{Constraint, Layout, Rect},
-    style::{Style, Stylize},
-    symbols::bar::NINE_LEVELS,
+    style::Style,
     widgets::{
         Block, BorderType, List, ListState, Paragraph, Row, StatefulWidget, Table, Widget,
         WidgetRef,
@@ -186,7 +185,8 @@ impl<'a> GBWidget<'a> {
                 if let Some(selected_pos) = selected {
                     if self.state.show_bank_disassemble {
                         let txt = self.state.disassembles.banks[selected_pos].join("\n");
-                        Paragraph::new(txt).render_ref(content_detail, buf);
+                        let p = Paragraph::new(txt);
+                        p.render(content_detail, buf);
                     } else {
                         let bank = &self.gb_binary.bank_data[selected_pos];
                         let hex = &Hex::new(bank).block(detail_block);

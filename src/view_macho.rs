@@ -3,7 +3,7 @@ use mule_macho::{LoadCommand, Macho, Section64};
 use ratatui::{
     buffer::Buffer,
     layout::{Constraint, Layout, Rect},
-    style::{Style, Stylize},
+    style::Style,
     widgets::{Block, BorderType, List, ListState, Paragraph, StatefulWidget, Widget},
 };
 
