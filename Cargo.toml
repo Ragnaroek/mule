@@ -1,13 +1,6 @@
-[package]
-name = "mule"
-version = "0.1.0"
-edition = "2024"
-authors = ["Michael Bohn <spaceodyssey@gmx.de>"]
+[workspace]
+members = [
+    "crates/mule-cli",
+]
 
-[dependencies]
-ratatui = { version = "0.30.0", features = ["unstable-widget-ref"] }
-crossterm = "0.29.0"
-
-mule_macho = { path = "../mule-macho/" }
-mule_gb = { path = "../mule-gb/" }
-psy = { path = "../../psy" }
+resolver = "2"
