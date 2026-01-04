@@ -1,48 +1,25 @@
-use eframe::egui;
-use egui::{ColorImage, TextureHandle, load::SizedTexture};
+mod app;
+mod util;
+mod view_gb;
 
-pub struct MuleApp {
-    logo: TextureHandle,
+use app::MuleApp;
+
+#[cfg(feature = "native")]
+fn main() -> eframe::Result {
+    let native_options = eframe::NativeOptions {
+        viewport: egui::ViewportBuilder::default()
+            .with_inner_size([400.0, 300.0])
+            .with_min_inner_size([300.0, 220.0]),
+        ..Default::default()
+    };
+    eframe::run_native(
+        "eframe template",
+        native_options,
+        Box::new(|cc| Ok(Box::new(MuleApp::new(cc)))),
+    )
 }
 
-impl MuleApp {
-    pub fn new(cc: &eframe::CreationContext<'_>) -> MuleApp {
-        let logo_bytes = include_bytes!("../assets/logo.png");
-        let image = image::load_from_memory(logo_bytes).unwrap().to_rgba8();
-        let logo_size = [image.width() as usize, image.height() as usize];
-        let pixels = image.into_raw();
-        let color_image = ColorImage::from_rgba_unmultiplied(logo_size, &pixels);
-        let logo = cc
-            .egui_ctx
-            .load_texture("logo", color_image, egui::TextureOptions::LINEAR);
-
-        MuleApp { logo }
-    }
-}
-
-impl eframe::App for MuleApp {
-    fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
-        egui::CentralPanel::default().show(ctx, |ui| {
-            ui.vertical_centered(|ui| {
-                let logo_size = self.logo.size_vec2();
-                ui.add_space(ui.available_height() / 2.0 - logo_size.y);
-
-                let texture = SizedTexture::new(self.logo.id(), logo_size);
-                ui.add(egui::Image::new(texture));
-                ui.add_space(20.0);
-                ui.label("Upload your binary to start analysing");
-                ui.add_space(5.0);
-                if ui.button("Upload").clicked() {}
-            });
-        });
-    }
-}
-
-fn main() {
-    eprintln!("native app TODO")
-}
-
-#[cfg(target_arch = "wasm32")]
+#[cfg(feature = "web")]
 fn main() {
     use eframe::wasm_bindgen::JsCast as _;
 

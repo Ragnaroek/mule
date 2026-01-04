@@ -3,6 +3,10 @@ name = "mule-viewer"
 version = "0.1.0"
 edition = "2024"
 
+[features]
+native = []
+web = []
+
 [dependencies]
 eframe = "0.33.3"
 egui = "0.33.3"
@@ -12,6 +16,9 @@ log = "0.4.29"
 web-sys = { version = "0.3.83", features = ["FileList", "File", "HtmlInputElement"] }
 image = { version = "0.25.9", default-features = false, features = ["png"] }
 gloo-net = "0.6.0"
+rfd = "0.16.0"
+
+mule_gb = { path = "../mule-gb/" }
 
 [profile.release]
 opt-level = "s"
