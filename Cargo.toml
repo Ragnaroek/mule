@@ -1,6 +1,9 @@
 [workspace]
 members = [
     "crates/mule-cli",
+    "crates/mule-gb",
+    "crates/mule-macho",
+    "crates/mule-viewer"
 ]
 
 resolver = "2"
