@@ -1,9 +1,13 @@
-#[cfg(feature = "web")]
-pub fn execute_async<F: Future<Output = ()> + 'static>(f: F) {
-    wasm_bindgen_futures::spawn_local(f);
+pub struct FileUpload {
+    pub name: String,
+    pub bytes: Vec<u8>,
 }
 
-#[cfg(feature = "native")]
-pub fn execute_async<F: Future<Output = ()> + 'static>(f: F) {
-    todo!("native code impl")
+pub async fn open_file() -> FileUpload {
+    let file = rfd::AsyncFileDialog::new().pick_file().await.unwrap();
+    let bytes = file.read().await;
+    FileUpload {
+        name: file.file_name(),
+        bytes,
+    }
 }
