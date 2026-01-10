@@ -4,7 +4,7 @@ mod view_gb;
 
 use app::MuleApp;
 
-#[cfg(feature = "native")]
+#[cfg(not(feature = "web"))]
 fn main() -> eframe::Result {
     let native_options = eframe::NativeOptions {
         viewport: egui::ViewportBuilder::default()

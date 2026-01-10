@@ -3,12 +3,27 @@
     "rust-analyzer": {
       "settings": {
         "cargo": {
+          // Path to the crate you want Rust Analyzer to focus on
+          "workspace": "crates/mule-viewer",
+          // Enable only the features you need for this crate
           "features": [
             "web"
           ],
+          // If you want all features automatically enabled instead, set to true
+          "allFeatures": false,
+          // Optional: specify a target if needed
+          "target": null
         },
-      },
-    },
+        // Optional: improves diagnostics in workspace projects
+        "checkOnSave": {
+          "enable": true,
+          "allTargets": true,
+          "features": [
+            "web"
+          ]
+        }
+      }
+    }
   },
   "preferred_line_length": 150,
   "formatter": "language_server",
