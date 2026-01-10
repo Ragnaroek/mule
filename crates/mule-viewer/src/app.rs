@@ -5,7 +5,10 @@ use egui::{
 use mule_gb::GBBinary;
 use poll_promise::Promise;
 
-use crate::util::{FileUpload, open_file};
+use crate::{
+    util::{FileUpload, open_file},
+    view_gb,
+};
 
 pub enum Binary {
     GB(GBBinary),
@@ -112,64 +115,16 @@ impl MuleApp {
     }
 }
 
-fn tile_frame(ui: &mut egui::Ui, title: &str, body: impl FnOnce(&mut egui::Ui)) {
-    egui::Frame::new()
-        .stroke(egui::Stroke::new(
-            1.0,
-            ui.visuals().widgets.noninteractive.bg_stroke.color,
-        ))
-        .inner_margin(egui::Margin::same(6))
-        .show(ui, |ui| {
-            ui.label(
-                egui::RichText::new(title)
-                    .monospace()
-                    .strong()
-                    .color(egui::Color32::LIGHT_YELLOW),
-            );
-            ui.separator();
-            body(ui);
-        });
-}
-
 impl eframe::App for MuleApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         self.handle_file_upload();
 
         if let Some(binary_file) = &self.binary_file {
-            let name = match &binary_file.binary {
-                Binary::GB(gb_binary) => gb_binary.header.game_title.clone(),
-                _ => "????".to_string(),
-            };
-
             MuleApp::show_top_menu(ctx, &binary_file.name, &self.logo_menu);
 
-            // MASTER
-            egui::SidePanel::left("master_panel")
-                .resizable(true)
-                .default_width(200.0)
-                .show(ctx, |ui| {
-                    tile_frame(ui, "Restart Calls", |ui| {
-                        ui.label("Non-default restarts: 4");
-                    });
-
-                    tile_frame(ui, "Banks (2)", |ui| {
-                        egui::CollapsingHeader::new("Bank 0")
-                            .default_open(true)
-                            .show(ui, |ui| {
-                                ui.label("...");
-                            });
-
-                        egui::CollapsingHeader::new("Bank 1").show(ui, |ui| {
-                            ui.label("...");
-                        });
-                    });
-                });
-
-            // DETAIL
-            egui::CentralPanel::default().show(ctx, |ui| {
-                ui.heading("Details");
-                ui.separator();
-            });
+            match &binary_file.binary {
+                Binary::GB(gb_binary) => view_gb::show_view_gb(ctx, gb_binary),
+            };
         } else {
             self.show_start_screen(ctx);
         }
