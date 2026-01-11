@@ -8,6 +8,7 @@ pub trait BinaryViewWidget {
 pub struct TileWidget {
     title: String,
     selected: bool,
+    selectable: bool,
 }
 
 impl TileWidget {
@@ -15,7 +16,15 @@ impl TileWidget {
         return TileWidget {
             title,
             selected: false,
+            selectable: true,
         };
+    }
+
+    /// disable click selection of the whole tile.
+    /// Necessary if the inner components of the tile want
+    /// to receive clicks and selection is handled there.
+    pub fn not_selectable(&mut self) {
+        self.selectable = false;
     }
 
     pub fn set_selected(&mut self, selected: bool) {
@@ -50,10 +59,14 @@ impl TileWidget {
                 body(ui);
             });
 
-        ui.interact(
-            inner_response.response.rect, // The area of the frame
-            ui.id().with(&self.title),    // A unique ID for this interaction
-            egui::Sense::click(),         // We want to sense clicks
-        )
+        if self.selectable {
+            ui.interact(
+                inner_response.response.rect, // The area of the frame
+                ui.id().with(&self.title),    // A unique ID for this interaction
+                egui::Sense::click(),         // We want to sense clicks
+            )
+        } else {
+            inner_response.response
+        }
     }
 }

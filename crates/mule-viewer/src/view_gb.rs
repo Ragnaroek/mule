@@ -10,16 +10,31 @@ pub struct GBViewWidget {
     tile_interrupts: TileWidget,
     tile_header: TileWidget,
     tile_banks: TileWidget,
+
+    selected: GBSelected,
+}
+
+#[derive(PartialEq)]
+enum GBSelected {
+    Restarts,
+    Interrupts,
+    Header,
+    Banks(usize),
 }
 
 impl GBViewWidget {
     pub fn new(binary: GBBinary) -> GBViewWidget {
+        let mut tile_banks = TileWidget::new(format!("Banks ({})", binary.bank_data.len()));
+        tile_banks.not_selectable();
+
         GBViewWidget {
             binary,
             tile_restarts: TileWidget::new("Restart Calls".to_string()),
             tile_interrupts: TileWidget::new("Interrupts".to_string()),
             tile_header: TileWidget::new("Header".to_string()),
-            tile_banks: TileWidget::new("Banks (xxx)".to_string()),
+            tile_banks,
+
+            selected: GBSelected::Header,
         }
     }
 }
@@ -31,6 +46,8 @@ impl BinaryViewWidget for GBViewWidget {
             .default_width(300.0)
             .frame(Frame::new().inner_margin(Margin::same(SIDE_SEG_MARGIN)))
             .show(ctx, |ui| {
+                self.tile_restarts
+                    .set_selected(self.selected == GBSelected::Restarts);
                 if self
                     .tile_restarts
                     .show(ui, |ui| {
@@ -38,16 +55,12 @@ impl BinaryViewWidget for GBViewWidget {
                     })
                     .clicked()
                 {
-                    //TODO impl TileGroup to manage this better
-                    self.tile_restarts.set_selected(false);
-                    self.tile_interrupts.set_selected(false);
-                    self.tile_header.set_selected(false);
-                    self.tile_banks.set_selected(false);
-
-                    self.tile_restarts.set_selected(true);
+                    self.selected = GBSelected::Restarts;
                 };
                 ui.add_space(SIDE_SEG_MARGIN as f32);
 
+                self.tile_interrupts
+                    .set_selected(self.selected == GBSelected::Interrupts);
                 if self
                     .tile_interrupts
                     .show(ui, |ui| {
@@ -55,15 +68,12 @@ impl BinaryViewWidget for GBViewWidget {
                     })
                     .clicked()
                 {
-                    self.tile_restarts.set_selected(false);
-                    self.tile_interrupts.set_selected(false);
-                    self.tile_header.set_selected(false);
-                    self.tile_banks.set_selected(false);
-
-                    self.tile_interrupts.set_selected(true);
+                    self.selected = GBSelected::Interrupts;
                 };
                 ui.add_space(SIDE_SEG_MARGIN as f32);
 
+                self.tile_header
+                    .set_selected(self.selected == GBSelected::Header);
                 if self
                     .tile_header
                     .show(ui, |ui| {
@@ -71,36 +81,31 @@ impl BinaryViewWidget for GBViewWidget {
                     })
                     .clicked()
                 {
-                    self.tile_restarts.set_selected(false);
-                    self.tile_interrupts.set_selected(false);
-                    self.tile_header.set_selected(false);
-                    self.tile_banks.set_selected(false);
-
-                    self.tile_header.set_selected(true);
+                    self.selected = GBSelected::Header;
                 };
                 ui.add_space(SIDE_SEG_MARGIN as f32);
 
+                if let GBSelected::Banks(_) = self.selected {
+                    self.tile_banks.set_selected(true);
+                } else {
+                    self.tile_banks.set_selected(false);
+                }
                 if self
                     .tile_banks
                     .show(ui, |ui| {
-                        egui::CollapsingHeader::new("Bank 0")
-                            .default_open(true)
-                            .show(ui, |ui| {
-                                ui.label("...");
-                            });
-
-                        egui::CollapsingHeader::new("Bank 1").show(ui, |ui| {
-                            ui.label("...");
+                        egui::ScrollArea::vertical().show(ui, |ui| {
+                            for i in 0..self.binary.bank_data.len() {
+                                if ui.selectable_label(false, format!("Bank {}", i)).clicked() {
+                                    //self.tile_banks.set_selected(true);
+                                    log::debug!("bank selected")
+                                };
+                            }
                         });
                     })
                     .clicked()
                 {
-                    self.tile_restarts.set_selected(false);
-                    self.tile_interrupts.set_selected(false);
-                    self.tile_header.set_selected(false);
-                    self.tile_banks.set_selected(false);
-
-                    self.tile_banks.set_selected(true);
+                    // TODO restore bank state, once implemented
+                    self.selected = GBSelected::Banks(0);
                 };
             });
 
