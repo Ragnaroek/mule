@@ -90,23 +90,23 @@ impl BinaryViewWidget for GBViewWidget {
                 } else {
                     self.tile_banks.set_selected(false);
                 }
-                if self
-                    .tile_banks
-                    .show(ui, |ui| {
-                        egui::ScrollArea::vertical().show(ui, |ui| {
-                            for i in 0..self.binary.bank_data.len() {
-                                if ui.selectable_label(false, format!("Bank {}", i)).clicked() {
-                                    //self.tile_banks.set_selected(true);
-                                    log::debug!("bank selected")
-                                };
-                            }
-                        });
-                    })
-                    .clicked()
-                {
-                    // TODO restore bank state, once implemented
-                    self.selected = GBSelected::Banks(0);
-                };
+                self.tile_banks.show(ui, |ui| {
+                    egui::ScrollArea::vertical().show(ui, |ui| {
+                        for i in 0..self.binary.bank_data.len() {
+                            let selected = match &self.selected {
+                                GBSelected::Banks(bank_num) => *bank_num == i,
+                                _ => false,
+                            };
+
+                            if ui
+                                .selectable_label(selected, format!("Bank {}", i))
+                                .clicked()
+                            {
+                                self.selected = GBSelected::Banks(i);
+                            };
+                        }
+                    });
+                })
             });
 
         egui::CentralPanel::default().show(ctx, |ui| {
