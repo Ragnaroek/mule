@@ -1,17 +1,32 @@
 use crate::view::{BinaryViewWidget, TileWidget};
 use egui::{Frame, Margin};
 use mule_gb::{self, GBBinary};
+use psy::dasm::gb;
 
 const SIDE_SEG_MARGIN: i8 = 8;
 
 pub struct GBViewWidget {
     binary: GBBinary,
+    binary_disassemble: GBBinaryDisassembled,
+
     tile_restarts: TileWidget,
     tile_interrupts: TileWidget,
     tile_header: TileWidget,
     tile_banks: TileWidget,
 
     selected: GBSelected,
+}
+
+// contains everything that is only computed once from the GBBinary
+struct GBBinaryDisassembled {
+    rst_0: Vec<String>,
+    rst_1: Vec<String>,
+    rst_2: Vec<String>,
+    rst_3: Vec<String>,
+    rst_4: Vec<String>,
+    rst_5: Vec<String>,
+    rst_6: Vec<String>,
+    rst_7: Vec<String>,
 }
 
 #[derive(PartialEq)]
@@ -27,8 +42,12 @@ impl GBViewWidget {
         let mut tile_banks = TileWidget::new(format!("Banks ({})", binary.bank_data.len()));
         tile_banks.not_selectable();
 
+        let binary_disassemble = initial_disassemble(&binary);
+
         GBViewWidget {
             binary,
+            binary_disassemble,
+
             tile_restarts: TileWidget::new("Restart Calls".to_string()),
             tile_interrupts: TileWidget::new("Interrupts".to_string()),
             tile_header: TileWidget::new("Header".to_string()),
@@ -36,6 +55,26 @@ impl GBViewWidget {
 
             selected: GBSelected::Header,
         }
+    }
+}
+
+fn initial_disassemble(binary: &GBBinary) -> GBBinaryDisassembled {
+    GBBinaryDisassembled {
+        rst_0: disassemble(&binary.restart_calls.rst_0),
+        rst_1: disassemble(&binary.restart_calls.rst_1),
+        rst_2: disassemble(&binary.restart_calls.rst_2),
+        rst_3: disassemble(&binary.restart_calls.rst_3),
+        rst_4: disassemble(&binary.restart_calls.rst_4),
+        rst_5: disassemble(&binary.restart_calls.rst_5),
+        rst_6: disassemble(&binary.restart_calls.rst_6),
+        rst_7: disassemble(&binary.restart_calls.rst_7),
+    }
+}
+
+fn disassemble(data: &[u8]) -> Vec<String> {
+    match gb::disassemble(data) {
+        Err(err) => vec![format!("Err disassemble: {}", err)],
+        Ok(dis) => dis,
     }
 }
 
@@ -119,18 +158,22 @@ impl BinaryViewWidget for GBViewWidget {
             });
 
         egui::CentralPanel::default().show(ctx, |ui| {
-            let selected_debug = if self.tile_banks.is_selected() {
-                "banks"
+            if self.tile_banks.is_selected() {
+                ()
             } else if self.tile_header.is_selected() {
-                "header"
+                ()
             } else if self.tile_interrupts.is_selected() {
-                "interrupts"
+                ()
             } else {
-                "restarts"
+                ui.label(format!("RST 0: {}", self.binary_disassemble.rst_0.join("")));
+                ui.label(format!("RST 1: {}", self.binary_disassemble.rst_1.join("")));
+                ui.label(format!("RST 2: {}", self.binary_disassemble.rst_2.join("")));
+                ui.label(format!("RST 3: {}", self.binary_disassemble.rst_3.join("")));
+                ui.label(format!("RST 4: {}", self.binary_disassemble.rst_4.join("")));
+                ui.label(format!("RST 5: {}", self.binary_disassemble.rst_5.join("")));
+                ui.label(format!("RST 6: {}", self.binary_disassemble.rst_6.join("")));
+                ui.label(format!("RST 7: {}", self.binary_disassemble.rst_7.join("")));
             };
-
-            ui.heading(selected_debug);
-            ui.separator();
         });
     }
 }
