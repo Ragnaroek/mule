@@ -45,11 +45,24 @@ impl MuleApp {
             cc.egui_ctx
                 .load_texture("logo_menu", color_image, egui::TextureOptions::LINEAR);
 
+        #[cfg(feature = "debug")]
+        let binary_view_open = {
+            let debug_bytes = include_bytes!("../debug/debug_rom.gb");
+            let gb_binary = mule_gb::load(debug_bytes).expect("debug gb file binary parse");
+            Some(BinaryViewOpen {
+                file_name: "debug_rom.gb".to_string(),
+                view: Box::new(GBViewWidget::new(gb_binary)),
+            })
+        };
+
+        #[cfg(not(feature = "debug"))]
+        let binary_view_open = None;
+
         MuleApp {
             logo,
             logo_menu,
             binary_file_open_promise: None,
-            binary_view_open: None,
+            binary_view_open,
         }
     }
 

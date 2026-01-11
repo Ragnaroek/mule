@@ -7,7 +7,8 @@
           "workspace": "crates/mule-viewer",
           // Enable only the features you need for this crate
           "features": [
-            "web"
+            "web",
+            "debug"
           ],
           // If you want all features automatically enabled instead, set to true
           "allFeatures": false,
@@ -19,7 +20,8 @@
           "enable": true,
           "allTargets": true,
           "features": [
-            "web"
+            "web",
+            "debug"
           ]
         }
       }

@@ -22,6 +22,10 @@ impl TileWidget {
         self.selected = selected;
     }
 
+    pub fn is_selected(&self) -> bool {
+        self.selected
+    }
+
     pub fn show(&self, ui: &mut egui::Ui, body: impl FnOnce(&mut egui::Ui)) -> Response {
         let selected_colour = Color32::from_rgb(230, 126, 34);
 

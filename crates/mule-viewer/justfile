@@ -1,2 +1,2 @@
 run:
-    trunk serve --features web
+    trunk serve --features web,debug

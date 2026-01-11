@@ -5,6 +5,7 @@ edition = "2024"
 
 [features]
 web = []
+debug = []
 
 [dependencies]
 eframe = "0.33.3"

@@ -105,7 +105,17 @@ impl BinaryViewWidget for GBViewWidget {
             });
 
         egui::CentralPanel::default().show(ctx, |ui| {
-            ui.heading("Details");
+            let selected_debug = if self.tile_banks.is_selected() {
+                "banks"
+            } else if self.tile_header.is_selected() {
+                "header"
+            } else if self.tile_interrupts.is_selected() {
+                "interrupts"
+            } else {
+                "restarts"
+            };
+
+            ui.heading(selected_debug);
             ui.separator();
         });
     }
