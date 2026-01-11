@@ -2,21 +2,17 @@ use eframe::egui;
 use egui::{
     Button, ColorImage, ScrollArea, TextureHandle, containers::menu::MenuButton, load::SizedTexture,
 };
-use mule_gb::GBBinary;
 use poll_promise::Promise;
 
 use crate::{
     util::{FileUpload, open_file},
-    view_gb,
+    view::BinaryViewWidget,
+    view_gb::GBViewWidget,
 };
 
-pub enum Binary {
-    GB(GBBinary),
-}
-
-struct BinaryFile {
-    name: String,
-    binary: Binary,
+struct BinaryViewOpen {
+    file_name: String,
+    view: Box<dyn BinaryViewWidget>,
 }
 
 pub struct MuleApp {
@@ -24,7 +20,7 @@ pub struct MuleApp {
     logo_menu: TextureHandle,
 
     binary_file_open_promise: Option<Promise<FileUpload>>,
-    binary_file: Option<BinaryFile>,
+    binary_view_open: Option<BinaryViewOpen>,
 }
 
 const MENU_HEIGHT: f32 = 35.0;
@@ -53,17 +49,17 @@ impl MuleApp {
             logo,
             logo_menu,
             binary_file_open_promise: None,
-            binary_file: None,
+            binary_view_open: None,
         }
     }
 
     fn handle_file_upload(&mut self) {
         if let Some(binary_promise) = &self.binary_file_open_promise {
             if let Some(file_upload) = binary_promise.ready() {
-                let parsed_file = mule_gb::load(&file_upload.bytes).expect("gb file binary parse");
-                self.binary_file = Some(BinaryFile {
-                    name: file_upload.name.clone(),
-                    binary: Binary::GB(parsed_file),
+                let gb_binary = mule_gb::load(&file_upload.bytes).expect("gb file binary parse");
+                self.binary_view_open = Some(BinaryViewOpen {
+                    file_name: file_upload.name.clone(),
+                    view: Box::new(GBViewWidget::new(gb_binary)),
                 });
                 self.binary_file_open_promise = None;
             }
@@ -119,12 +115,9 @@ impl eframe::App for MuleApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         self.handle_file_upload();
 
-        if let Some(binary_file) = &self.binary_file {
-            MuleApp::show_top_menu(ctx, &binary_file.name, &self.logo_menu);
-
-            match &binary_file.binary {
-                Binary::GB(gb_binary) => view_gb::show_view_gb(ctx, gb_binary),
-            };
+        if let Some(binary_view_open) = &mut self.binary_view_open {
+            MuleApp::show_top_menu(ctx, &binary_view_open.file_name, &self.logo_menu);
+            binary_view_open.view.show(ctx);
         } else {
             self.show_start_screen(ctx);
         }
