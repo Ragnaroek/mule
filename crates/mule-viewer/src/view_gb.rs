@@ -51,7 +51,10 @@ impl BinaryViewWidget for GBViewWidget {
                 if self
                     .tile_restarts
                     .show(ui, |ui| {
-                        ui.label("Non-default restarts: 4");
+                        ui.label(&format!(
+                            "Non-default restarts: {}",
+                            non_default_restarts(&self.binary)
+                        ));
                     })
                     .clicked()
                 {
@@ -64,7 +67,10 @@ impl BinaryViewWidget for GBViewWidget {
                 if self
                     .tile_interrupts
                     .show(ui, |ui| {
-                        ui.label("Non-default interrupts: 4");
+                        ui.label(&format!(
+                            "Non-default interrupts: {}",
+                            non_default_interrupts(&self.binary)
+                        ));
                     })
                     .clicked()
                 {
@@ -77,7 +83,10 @@ impl BinaryViewWidget for GBViewWidget {
                 if self
                     .tile_header
                     .show(ui, |ui| {
-                        ui.label("Non-default interrupts: 4");
+                        ui.label(&format!(
+                            "title:{} | type:{:?}",
+                            self.binary.header.game_title, self.binary.header.cartridge_type
+                        ));
                     })
                     .clicked()
                 {
@@ -124,4 +133,62 @@ impl BinaryViewWidget for GBViewWidget {
             ui.separator();
         });
     }
+}
+
+fn non_default_restarts(binary: &GBBinary) -> usize {
+    let mut n = 0;
+    if !default_vector(&binary.restart_calls.rst_0) {
+        n += 1
+    }
+    if !default_vector(&binary.restart_calls.rst_1) {
+        n += 1
+    }
+    if !default_vector(&binary.restart_calls.rst_2) {
+        n += 1
+    }
+    if !default_vector(&binary.restart_calls.rst_3) {
+        n += 1
+    }
+    if !default_vector(&binary.restart_calls.rst_4) {
+        n += 1
+    }
+    if !default_vector(&binary.restart_calls.rst_5) {
+        n += 1
+    }
+    if !default_vector(&binary.restart_calls.rst_6) {
+        n += 1
+    }
+    if !default_vector(&binary.restart_calls.rst_7) {
+        n += 1
+    }
+    n
+}
+
+fn non_default_interrupts(binary: &GBBinary) -> usize {
+    let mut n = 0;
+    if !default_vector(&binary.interrupts.v_blank) {
+        n += 1;
+    }
+    if !default_vector(&binary.interrupts.lcd_stat) {
+        n += 1;
+    }
+    if !default_vector(&binary.interrupts.timer) {
+        n += 1;
+    }
+    if !default_vector(&binary.interrupts.serial) {
+        n += 1;
+    }
+    if !default_vector(&binary.interrupts.joypad) {
+        n += 1;
+    }
+    n
+}
+
+fn default_vector(data: &[u8]) -> bool {
+    for i in 0..data.len() {
+        if data[i] != 0xFF {
+            return false;
+        }
+    }
+    true
 }
