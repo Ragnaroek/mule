@@ -19,6 +19,11 @@ pub struct GBViewWidget {
 
 // contains everything that is only computed once from the GBBinary
 struct GBBinaryDisassembled {
+    interrupt_v_blank: Vec<String>,
+    interrupt_lcd_stat: Vec<String>,
+    interrupt_timer: Vec<String>,
+    interrupt_serial: Vec<String>,
+    interrupt_joypad: Vec<String>,
     rst_0: Vec<String>,
     rst_1: Vec<String>,
     rst_2: Vec<String>,
@@ -60,6 +65,11 @@ impl GBViewWidget {
 
 fn initial_disassemble(binary: &GBBinary) -> GBBinaryDisassembled {
     GBBinaryDisassembled {
+        interrupt_v_blank: disassemble(&binary.interrupts.v_blank),
+        interrupt_lcd_stat: disassemble(&binary.interrupts.lcd_stat),
+        interrupt_timer: disassemble(&binary.interrupts.timer),
+        interrupt_serial: disassemble(&binary.interrupts.serial),
+        interrupt_joypad: disassemble(&binary.interrupts.joypad),
         rst_0: disassemble(&binary.restart_calls.rst_0),
         rst_1: disassemble(&binary.restart_calls.rst_1),
         rst_2: disassemble(&binary.restart_calls.rst_2),
@@ -163,7 +173,26 @@ impl BinaryViewWidget for GBViewWidget {
             } else if self.tile_header.is_selected() {
                 ()
             } else if self.tile_interrupts.is_selected() {
-                ()
+                ui.label(format!(
+                    "V-Blank: {}",
+                    self.binary_disassemble.interrupt_v_blank.join("")
+                ));
+                ui.label(format!(
+                    "LCD-Stat: {}",
+                    self.binary_disassemble.interrupt_lcd_stat.join("")
+                ));
+                ui.label(format!(
+                    "Timer: {}",
+                    self.binary_disassemble.interrupt_timer.join("")
+                ));
+                ui.label(format!(
+                    "Serial: {}",
+                    self.binary_disassemble.interrupt_serial.join("")
+                ));
+                ui.label(format!(
+                    "V-Blank: {}",
+                    self.binary_disassemble.interrupt_joypad.join("")
+                ));
             } else {
                 ui.label(format!("RST 0: {}", self.binary_disassemble.rst_0.join("")));
                 ui.label(format!("RST 1: {}", self.binary_disassemble.rst_1.join("")));
