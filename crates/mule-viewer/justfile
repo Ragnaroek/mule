@@ -2,4 +2,4 @@ run:
     trunk serve --features web,debug
 
 build:
-    trunk build --features web
+    trunk build --release --features web
