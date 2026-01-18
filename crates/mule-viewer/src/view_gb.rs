@@ -1,4 +1,7 @@
-use crate::view::{BinaryViewWidget, TileWidget};
+use crate::{
+    hex::HexWidget,
+    view::{BinaryViewWidget, TileWidget},
+};
 use egui::{Frame, Margin};
 use mule_gb::{self, GBBinary};
 use psy::dasm::gb;
@@ -169,7 +172,13 @@ impl BinaryViewWidget for GBViewWidget {
 
         egui::CentralPanel::default().show(ctx, |ui| {
             if self.tile_banks.is_selected() {
-                ()
+                match self.selected {
+                    GBSelected::Banks(bank) => {
+                        let hex = HexWidget::new(&self.binary.bank_data[bank]);
+                        hex.show(ui);
+                    }
+                    _ => { /* show nothing */ }
+                }
             } else if self.tile_header.is_selected() {
                 ()
             } else if self.tile_interrupts.is_selected() {

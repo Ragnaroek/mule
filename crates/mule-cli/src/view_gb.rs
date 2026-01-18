@@ -77,7 +77,7 @@ impl GBInteractiveState {
             bank_list_state,
             previous_focus: Focus::None,
             focus_on: Focus::Header,
-            show_bank_disassemble: true,
+            show_bank_disassemble: false,
             disassembles: GBDisassembles {
                 entry_point: disassemble(&binary.header.entry_point),
                 interrupt_v_blank: disassemble(&binary.interrupts.v_blank),

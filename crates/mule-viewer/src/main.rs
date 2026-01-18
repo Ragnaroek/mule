@@ -1,4 +1,5 @@
 mod app;
+mod hex;
 mod util;
 mod view;
 mod view_gb;
