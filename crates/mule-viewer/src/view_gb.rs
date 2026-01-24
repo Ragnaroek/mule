@@ -8,6 +8,11 @@ use psy::dasm::gb;
 
 const SIDE_SEG_MARGIN: i8 = 8;
 
+struct BankViewState {
+    bank: usize,
+    hex: HexWidget,
+}
+
 pub struct GBViewWidget {
     binary: GBBinary,
     binary_disassemble: GBBinaryDisassembled,
@@ -18,6 +23,7 @@ pub struct GBViewWidget {
     tile_banks: TileWidget,
 
     selected: GBSelected,
+    bank_view_state: Option<BankViewState>,
 }
 
 // contains everything that is only computed once from the GBBinary
@@ -62,6 +68,7 @@ impl GBViewWidget {
             tile_banks,
 
             selected: GBSelected::Header,
+            bank_view_state: None,
         }
     }
 }
@@ -153,17 +160,29 @@ impl BinaryViewWidget for GBViewWidget {
                 }
                 self.tile_banks.show(ui, |ui| {
                     egui::ScrollArea::vertical().show(ui, |ui| {
-                        for i in 0..self.binary.bank_data.len() {
+                        for bank in 0..self.binary.bank_data.len() {
                             let selected = match &self.selected {
-                                GBSelected::Banks(bank_num) => *bank_num == i,
+                                GBSelected::Banks(bank_num) => *bank_num == bank,
                                 _ => false,
                             };
 
                             if ui
-                                .selectable_label(selected, format!("Bank {}", i))
+                                .selectable_label(selected, format!("Bank {}", bank))
                                 .clicked()
                             {
-                                self.selected = GBSelected::Banks(i);
+                                self.selected = GBSelected::Banks(bank);
+
+                                let switch_bank = if let Some(state) = &self.bank_view_state {
+                                    state.bank != bank
+                                } else {
+                                    true
+                                };
+                                if switch_bank {
+                                    self.bank_view_state = Some(BankViewState {
+                                        bank,
+                                        hex: HexWidget::new(self.binary.bank_data[bank].clone()),
+                                    });
+                                }
                             };
                         }
                     });
@@ -172,12 +191,8 @@ impl BinaryViewWidget for GBViewWidget {
 
         egui::CentralPanel::default().show(ctx, |ui| {
             if self.tile_banks.is_selected() {
-                match self.selected {
-                    GBSelected::Banks(bank) => {
-                        let hex = HexWidget::new(&self.binary.bank_data[bank]);
-                        hex.show(ui);
-                    }
-                    _ => { /* show nothing */ }
+                if let Some(bank_state) = &mut self.bank_view_state {
+                    bank_state.hex.show(ui);
                 }
             } else if self.tile_header.is_selected() {
                 ()
