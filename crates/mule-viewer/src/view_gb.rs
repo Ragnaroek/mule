@@ -2,8 +2,8 @@ use crate::{
     hex::HexWidget,
     view::{BinaryViewWidget, TileWidget},
 };
-use egui::{Frame, Margin};
-use mule_gb::{self, GBBinary};
+use egui::{Frame, Grid, Margin};
+use mule_gb::{self, DestinationCode, GBBinary, GBCFlag, RAMSize, ROMSize, SGBFlag};
 use psy::dasm::gb;
 
 const SIDE_SEG_MARGIN: i8 = 8;
@@ -41,6 +41,7 @@ struct GBBinaryDisassembled {
     rst_5: Vec<String>,
     rst_6: Vec<String>,
     rst_7: Vec<String>,
+    entry_point: Vec<String>,
 }
 
 #[derive(PartialEq)]
@@ -71,6 +72,68 @@ impl GBViewWidget {
             bank_view_state: None,
         }
     }
+
+    fn render_header(&self, ui: &mut egui::Ui) {
+        Grid::new("header_grid")
+            .spacing([40.0, 3.0])
+            .show(ui, |ui| {
+                ui.label("Logo:");
+                ui.label("TODO");
+                ui.end_row();
+
+                ui.label("Entry Point:");
+                ui.label(self.binary_disassemble.entry_point.join(""));
+                ui.end_row();
+
+                ui.label("Game Title:");
+                ui.label(&self.binary.header.game_title);
+                ui.end_row();
+
+                ui.label("Manufacturer Code:");
+                ui.label(manufacturer_display(&self.binary.header.manufacturer_code));
+                ui.end_row();
+
+                ui.label("GBC Flag:");
+                ui.label(gbc_flag_display(self.binary.header.gbc_flag));
+                ui.end_row();
+
+                ui.label("Licensee Code:");
+                ui.label(&format!("{:?}", self.binary.header.licensee_code));
+                ui.end_row();
+
+                ui.label("Super Gameboy Flag:");
+                ui.label(sgb_flag_display(self.binary.header.sgb_flag));
+                ui.end_row();
+
+                ui.label("Cartridge Type:");
+                ui.label(&format!("{:?}", self.binary.header.cartridge_type));
+                ui.end_row();
+
+                ui.label("ROM Size:");
+                ui.label(rom_display(self.binary.header.rom_size));
+                ui.end_row();
+
+                ui.label("RAM Size:");
+                ui.label(ram_display(self.binary.header.ram_size));
+                ui.end_row();
+
+                ui.label("Destination Code:");
+                ui.label(dest_code_display(self.binary.header.destination_code));
+                ui.end_row();
+
+                ui.label("ROM Version:");
+                ui.label(&format!("{}", self.binary.header.rom_version));
+                ui.end_row();
+
+                ui.label("Checksum:");
+                ui.label(&format!("{}", self.binary.header.checksum));
+                ui.end_row();
+
+                ui.label("Global Checksum:");
+                ui.label(&format!("{}", self.binary.header.global_checksum));
+                ui.end_row();
+            });
+    }
 }
 
 fn initial_disassemble(binary: &GBBinary) -> GBBinaryDisassembled {
@@ -88,6 +151,7 @@ fn initial_disassemble(binary: &GBBinary) -> GBBinaryDisassembled {
         rst_5: disassemble(&binary.restart_calls.rst_5),
         rst_6: disassemble(&binary.restart_calls.rst_6),
         rst_7: disassemble(&binary.restart_calls.rst_7),
+        entry_point: disassemble(&binary.header.entry_point),
     }
 }
 
@@ -195,7 +259,7 @@ impl BinaryViewWidget for GBViewWidget {
                     bank_state.hex.show(ui);
                 }
             } else if self.tile_header.is_selected() {
-                ()
+                self.render_header(ui);
             } else if self.tile_interrupts.is_selected() {
                 ui.label(format!(
                     "V-Blank: {}",
@@ -287,4 +351,58 @@ fn default_vector(data: &[u8]) -> bool {
         }
     }
     true
+}
+
+fn manufacturer_display<'a>(code: &'a str) -> &'a str {
+    if code.is_empty() { &"-" } else { &code }
+}
+
+fn gbc_flag_display(gbc_flag: GBCFlag) -> &'static str {
+    match gbc_flag {
+        GBCFlag::GBOnly => "GB only",
+        GBCFlag::GBCAndGB => "GB & GBC",
+        GBCFlag::GBCOnly => "GBC only",
+    }
+}
+
+fn sgb_flag_display(sgb_flag: SGBFlag) -> &'static str {
+    match sgb_flag {
+        SGBFlag::NoSGB => "No support",
+        SGBFlag::SGBSupport => "Supported",
+    }
+}
+
+fn ram_display(ram: RAMSize) -> &'static str {
+    match ram {
+        RAMSize::None => "No RAM",
+        RAMSize::KB2 => "2 KiB",
+        RAMSize::KB8 => "8 KiB",
+        RAMSize::KB32 => "32 KiB",
+        RAMSize::KB64 => "64 KiB",
+        RAMSize::KB128 => "128 KiB",
+    }
+}
+
+fn rom_display(rom: ROMSize) -> &'static str {
+    match rom {
+        ROMSize::NoBanking => "No Banking (32KiB)",
+        ROMSize::Banks4 => "4 Banks (64 KiB)",
+        ROMSize::Banks8 => "8 Banks (128 KiB)",
+        ROMSize::Banks16 => "16 Banks (256 KiB)",
+        ROMSize::Banks32 => "32 Banks (512 KiB)",
+        ROMSize::Banks64 => "64 Banks (1 MiB)",
+        ROMSize::Banks72 => "72 Banks (1.1 MiB)",
+        ROMSize::Banks80 => "80 Banks (1.2 MiB)",
+        ROMSize::Banks96 => "96 Banks (1.5 MiB)",
+        ROMSize::Banks128 => "128 Banks (2 MiB)",
+        ROMSize::Banks256 => "256 Banks (4 MiB)",
+        ROMSize::Banks512 => "512 Banks (8 MiB)",
+    }
+}
+
+fn dest_code_display(dest_code: DestinationCode) -> &'static str {
+    match dest_code {
+        DestinationCode::Japanese => "Japanese",
+        DestinationCode::NonJapanese => "No Japanese",
+    }
 }
