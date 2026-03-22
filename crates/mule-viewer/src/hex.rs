@@ -49,10 +49,10 @@ impl HexWidget {
                             if offset == self.byte_selected {
                                 selected_pos = Some(resp.rect)
                             }
-
-                            offset += 1;
                         }
                         ui.label(RichText::new(" ").font(font_id.clone()));
+
+                        offset += 4;
                     }
                 });
             }
