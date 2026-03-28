@@ -79,8 +79,8 @@ impl MuleApp {
         }
     }
 
-    fn show_start_screen(&mut self, ctx: &egui::Context) {
-        egui::CentralPanel::default().show(ctx, |ui| {
+    fn show_start_screen(&mut self, ui: &mut egui::Ui) {
+        egui::CentralPanel::default().show_inside(ui, |ui| {
             ui.vertical_centered(|ui| {
                 let logo_size = self.logo.size_vec2();
                 ui.add_space(ui.available_height() / 2.0 - logo_size.y);
@@ -91,7 +91,7 @@ impl MuleApp {
                 ui.label("Upload your binary to start analysing");
                 ui.add_space(5.0);
                 if ui.button("Upload").clicked() {
-                    let egui_ctx = ctx.clone();
+                    let egui_ctx = ui.ctx().clone();
                     self.binary_file_open_promise =
                         Some(poll_promise::Promise::spawn_local(async move {
                             let file_upload = open_file().await;
@@ -103,10 +103,10 @@ impl MuleApp {
         });
     }
 
-    fn show_top_menu(ctx: &egui::Context, binary_name: &str, logo: &TextureHandle) {
-        egui::TopBottomPanel::top("menu")
-            .exact_height(MENU_HEIGHT)
-            .show(ctx, |ui| {
+    fn show_top_menu(ui: &mut egui::Ui, binary_name: &str, logo: &TextureHandle) {
+        egui::Panel::top("menu")
+            .exact_size(MENU_HEIGHT)
+            .show_inside(ui, |ui| {
                 egui::MenuBar::new().ui(ui, |ui| {
                     ui.set_max_height(MENU_HEIGHT);
 
@@ -125,14 +125,14 @@ impl MuleApp {
 }
 
 impl eframe::App for MuleApp {
-    fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+    fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
         self.handle_file_upload();
 
         if let Some(binary_view_open) = &mut self.binary_view_open {
-            MuleApp::show_top_menu(ctx, &binary_view_open.file_name, &self.logo_menu);
-            binary_view_open.view.show(ctx);
+            MuleApp::show_top_menu(ui, &binary_view_open.file_name, &self.logo_menu);
+            binary_view_open.view.show(ui);
         } else {
-            self.show_start_screen(ctx);
+            self.show_start_screen(ui);
         }
     }
 }

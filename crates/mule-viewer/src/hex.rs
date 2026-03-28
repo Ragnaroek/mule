@@ -1,8 +1,24 @@
+use std::collections::HashMap;
+
 use egui::{Color32, FontId, Pos2, Rect, RichText, ScrollArea};
+
+const GUTTER_SPACING: f32 = 15.0;
 
 struct DisassembleOverlay {
     pos: Pos2,
     text: String,
+}
+
+// TODO put this into mule?
+pub struct GBDisInstr {
+    offset: usize, // offset into the original byte sequence that produced this disassembly
+    len: usize,    // length of the instruction in bytes
+    text: String,  // diassembled text
+}
+
+// TODO put this into mule?
+pub struct GBDisassembly {
+    pub instructions: HashMap<usize, GBDisInstr>,
 }
 
 pub struct HexWidget {
@@ -19,18 +35,20 @@ impl HexWidget {
             disassemble_overlay: None,
         }
     }
-    pub fn show(&mut self, ui: &mut egui::Ui) {
+    pub fn show(&mut self, ui: &mut egui::Ui, show_disassemble: Option<&GBDisassembly>) {
         let font_id = FontId::new(14.0, egui::FontFamily::Monospace);
-        let hex_block_width = ui.fonts_mut(|fonts| fonts.glyph_width(&font_id, 'A')) * 9.0; // pixel width for 4-byte block like "C30C02CD ", including the padding at the end
+        let char_width = ui.fonts_mut(|fonts| fonts.glyph_width(&font_id, 'A'));
+        let hex_block_width = char_width * 9.0; // pixel width for 4-byte block like "C30C02CD ", including the padding at the end
 
         ScrollArea::vertical().show(ui, |ui| {
             let mut offset = 0;
             let mut selected_pos: Option<Rect> = None;
             while offset < self.data.len() {
                 ui.horizontal(|ui| {
-                    ui.label(RichText::new(&format!("{:04X}", offset)).font(font_id.clone()));
-                    ui.add_space(10.0);
                     ui.spacing_mut().item_spacing.x = 0.0;
+                    ui.label(RichText::new(&format!("{:04X}", offset)).font(font_id.clone()));
+                    ui.add_space(GUTTER_SPACING);
+
                     let num_hex_blocks = (ui.available_width() / hex_block_width).floor() as usize;
                     for _ in 0..num_hex_blocks {
                         for i in 0..4 {
@@ -55,6 +73,13 @@ impl HexWidget {
                         offset += 4;
                     }
                 });
+
+                if show_disassemble.is_some() {
+                    ui.horizontal(|ui| {
+                        ui.add_space(char_width * 4.0 + GUTTER_SPACING);
+                        ui.label("demo dis");
+                    });
+                }
             }
 
             if ui.input(|i| i.key_pressed(egui::Key::D)) {

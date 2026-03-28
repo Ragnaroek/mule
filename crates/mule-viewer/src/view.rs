@@ -2,7 +2,7 @@
 use egui::{Color32, Frame, Margin, Response, Stroke};
 
 pub trait BinaryViewWidget {
-    fn show(&mut self, ctx: &egui::Context);
+    fn show(&mut self, ui: &mut egui::Ui);
 }
 
 pub struct TileWidget {

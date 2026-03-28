@@ -1,5 +1,8 @@
+use std::collections::HashMap;
+
 use crate::{
-    hex::HexWidget,
+    hex::{GBDisassembly, HexWidget},
+    toggle::toggle,
     view::{BinaryViewWidget, TileWidget},
 };
 use egui::{Frame, Grid, Margin};
@@ -10,6 +13,7 @@ const SIDE_SEG_MARGIN: i8 = 8;
 
 struct BankViewState {
     bank: usize,
+    disassemble: Option<GBDisassembly>,
     hex: HexWidget,
 }
 
@@ -27,6 +31,7 @@ pub struct GBViewWidget {
 }
 
 // contains everything that is only computed once from the GBBinary
+// TOOD rename to GBBinaryHeaderDisassembly
 struct GBBinaryDisassembled {
     interrupt_v_blank: Vec<String>,
     interrupt_lcd_stat: Vec<String>,
@@ -163,12 +168,12 @@ fn disassemble(data: &[u8]) -> Vec<String> {
 }
 
 impl BinaryViewWidget for GBViewWidget {
-    fn show(&mut self, ctx: &egui::Context) {
-        egui::SidePanel::left("master_panel")
+    fn show(&mut self, ui: &mut egui::Ui) {
+        egui::Panel::left("master_panel")
             .resizable(true)
-            .default_width(300.0)
+            .default_size(300.0)
             .frame(Frame::new().inner_margin(Margin::same(SIDE_SEG_MARGIN)))
-            .show(ctx, |ui| {
+            .show_inside(ui, |ui| {
                 self.tile_restarts
                     .set_selected(self.selected == GBSelected::Restarts);
                 if self
@@ -243,6 +248,7 @@ impl BinaryViewWidget for GBViewWidget {
                                 };
                                 if switch_bank {
                                     self.bank_view_state = Some(BankViewState {
+                                        disassemble: None,
                                         bank,
                                         hex: HexWidget::new(self.binary.bank_data[bank].clone()),
                                     });
@@ -253,10 +259,10 @@ impl BinaryViewWidget for GBViewWidget {
                 })
             });
 
-        egui::CentralPanel::default().show(ctx, |ui| {
+        egui::CentralPanel::default().show_inside(ui, |ui| {
             if self.tile_banks.is_selected() {
                 if let Some(bank_state) = &mut self.bank_view_state {
-                    bank_state.hex.show(ui);
+                    render_bank_view(ui, bank_state);
                 }
             } else if self.tile_header.is_selected() {
                 self.render_header(ui);
@@ -293,6 +299,27 @@ impl BinaryViewWidget for GBViewWidget {
             };
         });
     }
+}
+
+fn render_bank_view(ui: &mut egui::Ui, bank_state: &mut BankViewState) {
+    ui.horizontal(|ui| {
+        let toggle_state_before = bank_state.disassemble.is_some();
+        let mut toggle_state = toggle_state_before;
+        ui.add(toggle(&mut toggle_state));
+
+        if toggle_state != toggle_state_before {
+            if toggle_state && bank_state.disassemble.is_none() {
+                bank_state.disassemble = Some(GBDisassembly {
+                    instructions: HashMap::new(),
+                });
+            } else if !toggle_state {
+                bank_state.disassemble = None;
+            }
+        }
+
+        ui.label("Show Disassemble");
+    });
+    bank_state.hex.show(ui, bank_state.disassemble.as_ref());
 }
 
 fn non_default_restarts(binary: &GBBinary) -> usize {
