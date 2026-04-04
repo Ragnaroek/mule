@@ -1,13 +1,11 @@
-use std::collections::HashMap;
-
 use crate::{
-    hex::{GBDisassembly, HexWidget},
+    hex::HexWidget,
     toggle::toggle,
     view::{BinaryViewWidget, TileWidget},
 };
 use egui::{Frame, Grid, Margin};
 use mule_gb::{self, DestinationCode, GBBinary, GBCFlag, RAMSize, ROMSize, SGBFlag};
-use psy::dasm::gb;
+use psy::dasm::gb::{self, GBDisassembly};
 
 const SIDE_SEG_MARGIN: i8 = 8;
 
@@ -139,6 +137,29 @@ impl GBViewWidget {
                 ui.end_row();
             });
     }
+
+    fn render_bank_view(&mut self, ui: &mut egui::Ui) {
+        if let Some(bank_state) = &mut self.bank_view_state {
+            ui.horizontal(|ui| {
+                let toggle_state_before = bank_state.disassemble.is_some();
+                let mut toggle_state = toggle_state_before;
+                ui.add(toggle(&mut toggle_state));
+
+                if toggle_state != toggle_state_before {
+                    if toggle_state && bank_state.disassemble.is_none() {
+                        let dis = gb::disassemble(&self.binary.bank_data[bank_state.bank])
+                            .expect("disassemble");
+                        bank_state.disassemble = Some(dis);
+                    } else if !toggle_state {
+                        bank_state.disassemble = None;
+                    }
+                }
+
+                ui.label("Show Disassemble");
+            });
+            bank_state.hex.show(ui, bank_state.disassemble.as_ref());
+        }
+    }
 }
 
 fn initial_disassemble(binary: &GBBinary) -> GBBinaryDisassembled {
@@ -161,9 +182,15 @@ fn initial_disassemble(binary: &GBBinary) -> GBBinaryDisassembled {
 }
 
 fn disassemble(data: &[u8]) -> Vec<String> {
-    match gb::disassemble(data) {
-        Err(err) => vec![format!("Err disassemble: {}", err)],
-        Ok(dis) => dis,
+    let disassemble = gb::disassemble(data);
+    if let Ok(dis) = disassemble {
+        let mut result = Vec::new();
+        for dis_instr in &dis.instructions {
+            result.push(dis_instr.instr.text(None));
+        }
+        result
+    } else {
+        vec![format!("Err disassemble: {:?}", disassemble.err())]
     }
 }
 
@@ -261,9 +288,7 @@ impl BinaryViewWidget for GBViewWidget {
 
         egui::CentralPanel::default().show_inside(ui, |ui| {
             if self.tile_banks.is_selected() {
-                if let Some(bank_state) = &mut self.bank_view_state {
-                    render_bank_view(ui, bank_state);
-                }
+                self.render_bank_view(ui);
             } else if self.tile_header.is_selected() {
                 self.render_header(ui);
             } else if self.tile_interrupts.is_selected() {
@@ -299,27 +324,6 @@ impl BinaryViewWidget for GBViewWidget {
             };
         });
     }
-}
-
-fn render_bank_view(ui: &mut egui::Ui, bank_state: &mut BankViewState) {
-    ui.horizontal(|ui| {
-        let toggle_state_before = bank_state.disassemble.is_some();
-        let mut toggle_state = toggle_state_before;
-        ui.add(toggle(&mut toggle_state));
-
-        if toggle_state != toggle_state_before {
-            if toggle_state && bank_state.disassemble.is_none() {
-                bank_state.disassemble = Some(GBDisassembly {
-                    instructions: HashMap::new(),
-                });
-            } else if !toggle_state {
-                bank_state.disassemble = None;
-            }
-        }
-
-        ui.label("Show Disassemble");
-    });
-    bank_state.hex.show(ui, bank_state.disassemble.as_ref());
 }
 
 fn non_default_restarts(binary: &GBBinary) -> usize {

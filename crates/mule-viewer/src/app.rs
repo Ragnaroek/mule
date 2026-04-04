@@ -125,8 +125,18 @@ impl MuleApp {
 }
 
 impl eframe::App for MuleApp {
-    fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
+    fn ui(&mut self, ui: &mut egui::Ui, frame: &mut eframe::Frame) {
         self.handle_file_upload();
+
+        let frame_time = ui.input(|i| i.stable_dt); // in seconds
+        let fps = 1.0 / frame_time;
+        egui::Window::new("Debug")
+            .default_open(true)
+            .vscroll(false)
+            .show(ui, |ui| {
+                ui.label(format!("FPS: {:.1}", fps));
+                ui.label(format!("Frame time: {:.2} ms", frame_time * 1000.0));
+            });
 
         if let Some(binary_view_open) = &mut self.binary_view_open {
             MuleApp::show_top_menu(ui, &binary_view_open.file_name, &self.logo_menu);

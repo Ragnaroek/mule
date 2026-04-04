@@ -1,24 +1,13 @@
-use std::collections::HashMap;
+use egui::{FontId, Pos2, Rect, RichText, ScrollArea};
+use psy::dasm::gb::GBDisassembly;
 
-use egui::{Color32, FontId, Pos2, Rect, RichText, ScrollArea};
-
-const GUTTER_SPACING: f32 = 15.0;
+const GUTTER_SPACE_HEX: &str = "  ";
+const GUTTER_SPACE_DIS: &str = "            "; // empty line number + double because font-size is half
+const RIGHT_SPACING: f32 = 15.0;
 
 struct DisassembleOverlay {
     pos: Pos2,
     text: String,
-}
-
-// TODO put this into mule?
-pub struct GBDisInstr {
-    offset: usize, // offset into the original byte sequence that produced this disassembly
-    len: usize,    // length of the instruction in bytes
-    text: String,  // diassembled text
-}
-
-// TODO put this into mule?
-pub struct GBDisassembly {
-    pub instructions: HashMap<usize, GBDisInstr>,
 }
 
 pub struct HexWidget {
@@ -35,72 +24,22 @@ impl HexWidget {
             disassemble_overlay: None,
         }
     }
+
     pub fn show(&mut self, ui: &mut egui::Ui, show_disassemble: Option<&GBDisassembly>) {
         let font_id = FontId::new(14.0, egui::FontFamily::Monospace);
         let char_width = ui.fonts_mut(|fonts| fonts.glyph_width(&font_id, 'A'));
         let hex_block_width = char_width * 9.0; // pixel width for 4-byte block like "C30C02CD ", including the padding at the end
+        let gutter_width = char_width * (4.0 + GUTTER_SPACE_HEX.chars().count() as f32);
+        let num_hex_blocks = ((ui.available_width() - gutter_width - RIGHT_SPACING)
+            / hex_block_width)
+            .floor() as usize;
+        let num_row_bytes = num_hex_blocks * 4;
 
         ScrollArea::vertical().show(ui, |ui| {
-            let mut offset = 0;
-            let mut selected_pos: Option<Rect> = None;
-            while offset < self.data.len() {
-                ui.horizontal(|ui| {
-                    ui.spacing_mut().item_spacing.x = 0.0;
-                    ui.label(RichText::new(&format!("{:04X}", offset)).font(font_id.clone()));
-                    ui.add_space(GUTTER_SPACING);
-
-                    let num_hex_blocks = (ui.available_width() / hex_block_width).floor() as usize;
-                    for _ in 0..num_hex_blocks {
-                        for i in 0..4 {
-                            if (offset + i) >= self.data.len() {
-                                break;
-                            }
-                            let byte_text =
-                                RichText::new(&format!("{:02X}", self.data[offset + i]))
-                                    .font(font_id.clone());
-                            let byte_text = if offset == self.byte_selected {
-                                byte_text.background_color(Color32::WHITE)
-                            } else {
-                                byte_text
-                            };
-                            let resp = ui.label(byte_text);
-                            if offset == self.byte_selected {
-                                selected_pos = Some(resp.rect)
-                            }
-                        }
-                        ui.label(RichText::new(" ").font(font_id.clone()));
-
-                        offset += 4;
-                    }
-                });
-
-                if show_disassemble.is_some() {
-                    ui.horizontal(|ui| {
-                        ui.add_space(char_width * 4.0 + GUTTER_SPACING);
-                        ui.label("demo dis");
-                    });
-                }
-            }
-
-            if ui.input(|i| i.key_pressed(egui::Key::D)) {
-                ui.ctx()
-                    .input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::D));
-                log::debug!("d pressed {:?}", selected_pos);
-                if let Some(rect) = selected_pos {
-                    let dis_result = psy::dasm::gb::disassemble(
-                        &self.data[self.byte_selected
-                            ..(self.byte_selected + psy::arch::sm83::MAX_INSTRUCTION_BYTE_LENGTH)],
-                    );
-
-                    let text = if let Ok(dis) = dis_result {
-                        dis[0].to_string()
-                    } else {
-                        "ERR".to_string()
-                    };
-
-                    let pos = Pos2::new(rect.min.x, rect.max.y);
-                    self.disassemble_overlay = Some(DisassembleOverlay { pos, text });
-                }
+            if let Some(dis) = show_disassemble {
+                self.render_disassemble(ui, char_width, gutter_width, dis);
+            } else {
+                self.render_hex_only(ui, font_id, num_row_bytes);
             }
         });
 
@@ -118,6 +57,113 @@ impl HexWidget {
                     }
                 });
             });
+        }
+    }
+
+    fn render_hex_only(&self, ui: &mut egui::Ui, font_id: FontId, num_row_bytes: usize) {
+        let mut offset = 0;
+        while offset < self.data.len() {
+            ui.horizontal(|ui| {
+                ui.spacing_mut().item_spacing.x = 0.0;
+
+                let mut row_string = String::new();
+                row_string.push_str(&format!("{:04X}", offset));
+                row_string.push_str("  ");
+
+                for i in 0..num_row_bytes {
+                    let data_ix = offset + i;
+                    if data_ix >= self.data.len() {
+                        break;
+                    }
+                    row_string.push_str(&format!("{:02X}", self.data[data_ix]));
+                    if (data_ix + 1) % 4 == 0 {
+                        row_string.push(' ');
+                    }
+                }
+
+                ui.label(RichText::new(row_string).font(font_id.clone()));
+            });
+
+            offset += num_row_bytes;
+        }
+    }
+
+    fn render_disassemble(
+        &self,
+        ui: &mut egui::Ui,
+        char_width: f32,
+        gutter_width: f32,
+        dis: &GBDisassembly,
+    ) {
+        let font_id_hex = FontId::new(14.0, egui::FontFamily::Monospace);
+        let font_id_dis = FontId::new(7.0, egui::FontFamily::Monospace);
+        let max_block_width = char_width * 3.0; // 'FF ' (one byte hex + one spacing, worst-case can be optimized if computed per line)
+        let num_row_bytes = ((ui.available_width() - gutter_width - RIGHT_SPACING)
+            / max_block_width)
+            .floor() as usize;
+
+        let mut offset = 0;
+        let mut line_start_offset = offset;
+        let mut line_end_bytes = num_row_bytes;
+        let mut rects: Vec<(usize, usize)> = Vec::new();
+
+        let mut row_string = String::new();
+        let mut dis_string = String::new();
+        row_string.push_str(&format!("{:04X}", line_start_offset));
+        row_string.push_str(GUTTER_SPACE_HEX);
+        dis_string.push_str(GUTTER_SPACE_DIS);
+        for i in 0..dis.instructions.len() {
+            let instr = &dis.instructions[i];
+            if offset + instr.len > line_end_bytes {
+                let r = ui.horizontal(|ui| {
+                    ui.vertical(|ui| {
+                        ui.label(RichText::new(row_string.clone()).font(font_id_hex.clone()));
+                        ui.label(RichText::new(dis_string.clone()).font(font_id_dis.clone()));
+                    })
+                });
+
+                let padding = char_width / 3.0;
+                for rect in &rects {
+                    let bx = Rect::from_min_max(
+                        Pos2 {
+                            x: r.response.rect.min.x + rect.0 as f32 * char_width - padding,
+                            y: r.response.rect.min.y,
+                        },
+                        Pos2 {
+                            x: r.response.rect.min.x + rect.1 as f32 * char_width + padding,
+                            y: r.response.rect.max.y,
+                        },
+                    );
+                    ui.painter().rect_stroke(
+                        bx,
+                        0.0,
+                        egui::Stroke::new(1.0, egui::Color32::WHITE),
+                        egui::StrokeKind::Outside,
+                    );
+                }
+
+                line_start_offset = offset;
+                line_end_bytes += num_row_bytes;
+                row_string.clear();
+                dis_string.clear();
+                rects.clear();
+                row_string.push_str(&format!("{:04X}", line_start_offset));
+                row_string.push_str(GUTTER_SPACE_HEX);
+                dis_string.push_str(GUTTER_SPACE_DIS);
+            }
+
+            let start = row_string.chars().count();
+            for _ in 0..instr.len {
+                row_string.push_str(&format!("{:02X}", self.data[offset]));
+                offset += 1;
+            }
+            let max = instr.len * 2 * 2; //2 chars per byte + 2 times the width because font size is half
+            let truncated = instr.instr.mnemonic.chars().take(max).collect::<String>();
+            dis_string.push_str(&format!("{:<max$}  ", truncated));
+
+            rects.push((start, row_string.chars().count()));
+
+            row_string.push(' ');
         }
     }
 }
