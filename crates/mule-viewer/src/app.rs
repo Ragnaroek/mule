@@ -125,7 +125,7 @@ impl MuleApp {
 }
 
 impl eframe::App for MuleApp {
-    fn ui(&mut self, ui: &mut egui::Ui, frame: &mut eframe::Frame) {
+    fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
         self.handle_file_upload();
 
         let frame_time = ui.input(|i| i.stable_dt); // in seconds

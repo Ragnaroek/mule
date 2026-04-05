@@ -12,6 +12,7 @@ struct DisassembleOverlay {
 
 pub struct HexWidget {
     data: Vec<u8>,
+    font_id: FontId,
     byte_selected: usize,
     disassemble_overlay: Option<DisassembleOverlay>,
 }
@@ -20,26 +21,21 @@ impl HexWidget {
     pub fn new(data: Vec<u8>) -> HexWidget {
         HexWidget {
             data,
+            font_id: FontId::new(14.0, egui::FontFamily::Monospace),
             byte_selected: 0,
             disassemble_overlay: None,
         }
     }
 
     pub fn show(&mut self, ui: &mut egui::Ui, show_disassemble: Option<&GBDisassembly>) {
-        let font_id = FontId::new(14.0, egui::FontFamily::Monospace);
-        let char_width = ui.fonts_mut(|fonts| fonts.glyph_width(&font_id, 'A'));
-        let hex_block_width = char_width * 9.0; // pixel width for 4-byte block like "C30C02CD ", including the padding at the end
+        let char_width = ui.fonts_mut(|fonts| fonts.glyph_width(&self.font_id, 'A'));
         let gutter_width = char_width * (4.0 + GUTTER_SPACE_HEX.chars().count() as f32);
-        let num_hex_blocks = ((ui.available_width() - gutter_width - RIGHT_SPACING)
-            / hex_block_width)
-            .floor() as usize;
-        let num_row_bytes = num_hex_blocks * 4;
 
         ScrollArea::vertical().show(ui, |ui| {
             if let Some(dis) = show_disassemble {
                 self.render_disassemble(ui, char_width, gutter_width, dis);
             } else {
-                self.render_hex_only(ui, font_id, num_row_bytes);
+                self.render_hex_only(ui, char_width, gutter_width);
             }
         });
 
@@ -60,7 +56,14 @@ impl HexWidget {
         }
     }
 
-    fn render_hex_only(&self, ui: &mut egui::Ui, font_id: FontId, num_row_bytes: usize) {
+    fn render_hex_only(&self, ui: &mut egui::Ui, char_width: f32, gutter_width: f32) {
+        let hex_block_width = char_width * 9.0; // pixel width for 4-byte block like "C30C02CD ", including the padding at the end
+
+        let num_hex_blocks = ((ui.available_width() - gutter_width - RIGHT_SPACING)
+            / hex_block_width)
+            .floor() as usize;
+        let num_row_bytes = num_hex_blocks * 4;
+
         let mut offset = 0;
         while offset < self.data.len() {
             ui.horizontal(|ui| {
@@ -81,7 +84,7 @@ impl HexWidget {
                     }
                 }
 
-                ui.label(RichText::new(row_string).font(font_id.clone()));
+                ui.label(RichText::new(row_string).font(self.font_id.clone()));
             });
 
             offset += num_row_bytes;
@@ -95,29 +98,25 @@ impl HexWidget {
         gutter_width: f32,
         dis: &GBDisassembly,
     ) {
-        let font_id_hex = FontId::new(14.0, egui::FontFamily::Monospace);
-        let font_id_dis = FontId::new(7.0, egui::FontFamily::Monospace);
-        let max_block_width = char_width * 3.0; // 'FF ' (one byte hex + one spacing, worst-case can be optimized if computed per line)
-        let num_row_bytes = ((ui.available_width() - gutter_width - RIGHT_SPACING)
-            / max_block_width)
-            .floor() as usize;
+        let font_id_dis = FontId::new(self.font_id.size / 2.0, self.font_id.family.clone());
+        let available_width = ui.available_width() - gutter_width - RIGHT_SPACING;
 
         let mut offset = 0;
         let mut line_start_offset = offset;
-        let mut line_end_bytes = num_row_bytes;
+        let mut curr_width = gutter_width;
         let mut rects: Vec<(usize, usize)> = Vec::new();
-
         let mut row_string = String::new();
         let mut dis_string = String::new();
         row_string.push_str(&format!("{:04X}", line_start_offset));
         row_string.push_str(GUTTER_SPACE_HEX);
         dis_string.push_str(GUTTER_SPACE_DIS);
         for i in 0..dis.instructions.len() {
-            let instr = &dis.instructions[i];
-            if offset + instr.len > line_end_bytes {
+            let dis_instr = &dis.instructions[i];
+            let instr_len = (dis_instr.len * 2) as f32 * char_width;
+            if curr_width + instr_len > available_width {
                 let r = ui.horizontal(|ui| {
                     ui.vertical(|ui| {
-                        ui.label(RichText::new(row_string.clone()).font(font_id_hex.clone()));
+                        ui.label(RichText::new(row_string.clone()).font(self.font_id.clone()));
                         ui.label(RichText::new(dis_string.clone()).font(font_id_dis.clone()));
                     })
                 });
@@ -143,7 +142,7 @@ impl HexWidget {
                 }
 
                 line_start_offset = offset;
-                line_end_bytes += num_row_bytes;
+                curr_width = gutter_width;
                 row_string.clear();
                 dis_string.clear();
                 rects.clear();
@@ -153,17 +152,23 @@ impl HexWidget {
             }
 
             let start = row_string.chars().count();
-            for _ in 0..instr.len {
+            for _ in 0..dis_instr.len {
                 row_string.push_str(&format!("{:02X}", self.data[offset]));
                 offset += 1;
             }
-            let max = instr.len * 2 * 2; //2 chars per byte + 2 times the width because font size is half
-            let truncated = instr.instr.mnemonic.chars().take(max).collect::<String>();
+            let max = dis_instr.len * 2 * 2; //2 chars per byte + 2 times the width because font size is half
+            let truncated = dis_instr
+                .instr
+                .mnemonic
+                .chars()
+                .take(max)
+                .collect::<String>();
             dis_string.push_str(&format!("{:<max$}  ", truncated));
 
             rects.push((start, row_string.chars().count()));
 
             row_string.push(' ');
+            curr_width += instr_len + char_width; // char_width = ' '
         }
     }
 }
