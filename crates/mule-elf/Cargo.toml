@@ -1,0 +1,7 @@
+[package]
+name = "mule_elf"
+version = "0.1.0"
+edition = "2024"
+
+[lib]
+name = "mule_elf"

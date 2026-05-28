@@ -1,6 +1,7 @@
 [workspace]
 members = [
     "crates/mule-cli",
+    "crates/mule-elf",
     "crates/mule-gb",
     "crates/mule-macho",
     "crates/mule-viewer"
