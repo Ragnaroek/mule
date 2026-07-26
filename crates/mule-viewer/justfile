@@ -1,5 +1,8 @@
 run:
     trunk serve --features web,debug
 
+run-no-debug:
+    trunk serve --features web
+
 build:
     trunk build --release --features web
