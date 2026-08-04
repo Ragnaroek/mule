@@ -2415,6 +2415,12 @@ dependencies = [
 [[package]]
 name = "mule_elf"
 version = "0.1.0"
+dependencies = [
+ "clap",
+ "serde",
+ "serde-lexpr",
+ "serde_json",
+]
 
 [[package]]
 name = "mule_gb"

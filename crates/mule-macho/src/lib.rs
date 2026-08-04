@@ -255,6 +255,7 @@ pub enum LoadCommand {
     Unknow(u32),
 }
 
+// TODO rename to parse
 pub fn load(data: &[u8]) -> Result<Macho, String> {
     let mut reader = DataReader::new(data);
     let header = parse_header(&mut reader)?;
