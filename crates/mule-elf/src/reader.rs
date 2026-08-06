@@ -98,6 +98,10 @@ impl DataReader<'_> {
         self.offset += bytes;
     }
 
+    pub fn reset_offset(&mut self, offset: usize) {
+        self.offset = offset;
+    }
+
     pub fn offset(&self) -> usize {
         return self.offset;
     }
