@@ -10,6 +10,7 @@ mod reader;
 pub struct Elf {
     header: Header,
     program_header_table: Vec<ProgramHeader>,
+    section_header_table: Vec<SectionHeader>,
 }
 
 pub const MAGIC_HEADER: u32 = 0x464c457F; // header is read as little-endian and because of this reversed
@@ -99,13 +100,54 @@ pub enum SegmentType {
     Proc(u32),
 }
 
+#[derive(Serialize)]
+pub struct SectionHeader {
+    name: u32,
+    s_type: SectionType,
+    flags: u64,
+    virtual_address: u64,
+    offset: u64,
+    size: u64,
+    link: u32,
+    info: u32,
+    address_align: u64,
+    entry_size: u64,
+}
+
+#[derive(Serialize)]
+pub enum SectionType {
+    Null,
+    ProgBits,
+    SymTab,
+    StrTab,
+    Rela,
+    Hash,
+    Dynamic,
+    Note,
+    NoBits,
+    Rel,
+    ShLib,
+    DynSym,
+    InitArray,
+    FiniArray,
+    PreinitArray,
+    Group,
+    SymTabIndex,
+    Relr,
+    Os(u32),
+    Proc(u32),
+    User(u32),
+}
+
 pub fn parse(data: &[u8]) -> Result<Elf, String> {
     let mut reader = DataReader::new(data);
     let header = parse_header(&mut reader)?;
     let program_header_table = parse_program_header_table(&mut reader, &header)?;
+    let section_header_table = parse_section_header_table(&mut reader, &header)?;
     Ok(Elf {
         header,
         program_header_table,
+        section_header_table,
     })
 }
 
@@ -254,6 +296,70 @@ fn parse_segment_type(v: u32) -> Result<SegmentType, String> {
         0x60000000..=0x6fffffff => SegmentType::Os(v),
         0x70000000..=0x7fffffff => SegmentType::Proc(v),
         _ => return Err(format!("unknown segment_type: 0x{:x}", v)),
+    };
+    Ok(m)
+}
+
+fn parse_section_header_table(
+    reader: &mut DataReader,
+    header: &Header,
+) -> Result<Vec<SectionHeader>, String> {
+    reader.reset_offset(header.section_header_offset as usize);
+
+    let mut result = Vec::with_capacity(header.section_header_num as usize);
+    for _ in 0..header.section_header_num {
+        let name = reader.read_u32();
+        let s_type = parse_section_type(reader.read_u32())?;
+        let flags = reader.read_u64();
+        let virtual_address = reader.read_u64();
+        let offset = reader.read_u64();
+        let size = reader.read_u64();
+        let link = reader.read_u32();
+        let info = reader.read_u32();
+        let address_align = reader.read_u64();
+        let entry_size = reader.read_u64();
+
+        result.push(SectionHeader {
+            s_type,
+            name,
+            flags,
+            virtual_address,
+            offset,
+            size,
+            link,
+            info,
+            address_align,
+            entry_size,
+        });
+    }
+
+    Ok(result)
+}
+
+fn parse_section_type(v: u32) -> Result<SectionType, String> {
+    let m = match v {
+        0 => SectionType::Null,
+        1 => SectionType::ProgBits,
+        2 => SectionType::SymTab,
+        3 => SectionType::StrTab,
+        4 => SectionType::Rela,
+        5 => SectionType::Hash,
+        6 => SectionType::Dynamic,
+        7 => SectionType::Note,
+        8 => SectionType::NoBits,
+        9 => SectionType::Rel,
+        10 => SectionType::ShLib,
+        11 => SectionType::DynSym,
+        14 => SectionType::InitArray,
+        15 => SectionType::FiniArray,
+        16 => SectionType::PreinitArray,
+        17 => SectionType::Group,
+        18 => SectionType::SymTabIndex,
+        19 => SectionType::Relr,
+        0x60000000..=0x6fffffff => SectionType::Os(v),
+        0x70000000..=0x7fffffff => SectionType::Proc(v),
+        0x80000000..=0x8fffffff => SectionType::User(v),
+        _ => return Err(format!("unknown section_type: 0x{:x}", v)),
     };
     Ok(m)
 }
