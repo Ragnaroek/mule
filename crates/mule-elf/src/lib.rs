@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use crate::reader::DataReader;
 use serde::Serialize;
 
@@ -102,7 +104,8 @@ pub enum SegmentType {
 
 #[derive(Serialize)]
 pub struct SectionHeader {
-    name: u32,
+    name_index: u32,
+    name: String,
     s_type: SectionType,
     flags: u64,
     virtual_address: u64,
@@ -114,7 +117,7 @@ pub struct SectionHeader {
     entry_size: u64,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, PartialEq)]
 pub enum SectionType {
     Null,
     ProgBits,
@@ -143,7 +146,14 @@ pub fn parse(data: &[u8]) -> Result<Elf, String> {
     let mut reader = DataReader::new(data);
     let header = parse_header(&mut reader)?;
     let program_header_table = parse_program_header_table(&mut reader, &header)?;
-    let section_header_table = parse_section_header_table(&mut reader, &header)?;
+    let mut section_header_table = parse_section_header_table(&mut reader, &header)?;
+
+    let section_str_tab = parse_str_tab(
+        &mut reader,
+        &section_header_table[header.section_header_string_table_index as usize],
+    )?;
+    patch_section_names(&mut section_header_table, &section_str_tab)?;
+
     Ok(Elf {
         header,
         program_header_table,
@@ -308,7 +318,8 @@ fn parse_section_header_table(
 
     let mut result = Vec::with_capacity(header.section_header_num as usize);
     for _ in 0..header.section_header_num {
-        let name = reader.read_u32();
+        let name_index = reader.read_u32();
+        let name = "".to_string();
         let s_type = parse_section_type(reader.read_u32())?;
         let flags = reader.read_u64();
         let virtual_address = reader.read_u64();
@@ -321,6 +332,7 @@ fn parse_section_header_table(
 
         result.push(SectionHeader {
             s_type,
+            name_index,
             name,
             flags,
             virtual_address,
@@ -362,4 +374,50 @@ fn parse_section_type(v: u32) -> Result<SectionType, String> {
         _ => return Err(format!("unknown section_type: 0x{:x}", v)),
     };
     Ok(m)
+}
+
+fn parse_str_tab(
+    reader: &mut DataReader,
+    section: &SectionHeader,
+) -> Result<HashMap<usize, String>, String> {
+    if section.s_type != SectionType::StrTab {
+        return Err("parse_str_tab of non StrTab section".to_string());
+    }
+    if reader.read_u8_at(section.offset as usize) != 0 {
+        return Err("StrTab does not start with \\0 byte".to_string());
+    }
+
+    let str_tab_start = section.offset + 1; // +1 to skip the leading \0
+    reader.reset_offset(str_tab_start as usize);
+
+    let mut result = HashMap::new();
+    let mut str_start = 1;
+    for i in 1..section.size {
+        let tab_offset = (section.offset + i) as usize;
+        if reader.read_u8_at(tab_offset) == 0 {
+            let str = reader.read_utf8_string(tab_offset - (section.offset as usize + str_start));
+            reader.skip(1); // \0 byte
+            result.insert(str_start, str);
+            str_start = i as usize + 1;
+        }
+    }
+
+    Ok(result)
+}
+
+fn patch_section_names(
+    section_headers: &mut Vec<SectionHeader>,
+    str_tab: &HashMap<usize, String>,
+) -> Result<(), String> {
+    for header in section_headers {
+        if header.s_type == SectionType::Null {
+            continue;
+        }
+
+        let may_section_name = str_tab.get(&(header.name_index as usize));
+        if let Some(section_name) = may_section_name {
+            header.name = section_name.clone();
+        }
+    }
+    Ok(())
 }

@@ -1,5 +1,8 @@
 build:
     cargo build
 
+test:
+    cargo test
+
 run-melf BINARY:
     @cargo run --bin melf --features melf -- testdata/{{BINARY}} --format json
