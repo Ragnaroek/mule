@@ -102,12 +102,30 @@ pub enum SegmentType {
     Proc(u32),
 }
 
+#[repr(u64)]
+#[derive(Serialize, Copy, Clone)]
+pub enum SectionFlag {
+    Write,
+    Alloc,
+    ExecInstr,
+    Merge,
+    Strings,
+    InfoLink,
+    LinkOrder,
+    OsNonConforming,
+    Group,
+    TLS,
+    Compressed,
+    MaskOs(u64),
+    MaskProc(u64),
+}
+
 #[derive(Serialize)]
 pub struct SectionHeader {
     name_index: u32,
     name: String,
     s_type: SectionType,
-    flags: u64,
+    flags: Vec<SectionFlag>,
     virtual_address: u64,
     offset: u64,
     size: u64,
@@ -321,7 +339,7 @@ fn parse_section_header_table(
         let name_index = reader.read_u32();
         let name = "".to_string();
         let s_type = parse_section_type(reader.read_u32())?;
-        let flags = reader.read_u64();
+        let flags = parse_section_flags(reader.read_u64())?;
         let virtual_address = reader.read_u64();
         let offset = reader.read_u64();
         let size = reader.read_u64();
@@ -346,6 +364,58 @@ fn parse_section_header_table(
     }
 
     Ok(result)
+}
+
+fn parse_section_flags(v: u64) -> Result<Vec<SectionFlag>, String> {
+    let mut result = Vec::new();
+    let r = &mut result;
+    s_flag(v, SectionFlag::Write, r);
+    s_flag(v, SectionFlag::Alloc, r);
+    s_flag(v, SectionFlag::ExecInstr, r);
+    s_flag(v, SectionFlag::Merge, r);
+    s_flag(v, SectionFlag::Strings, r);
+    s_flag(v, SectionFlag::InfoLink, r);
+    s_flag(v, SectionFlag::LinkOrder, r);
+    s_flag(v, SectionFlag::OsNonConforming, r);
+    s_flag(v, SectionFlag::Group, r);
+    s_flag(v, SectionFlag::TLS, r);
+    s_flag(v, SectionFlag::Compressed, r);
+    s_flag(v, SectionFlag::MaskOs(0), r);
+    s_flag(v, SectionFlag::MaskProc(0), r);
+    Ok(result)
+}
+
+fn s_flag(v: u64, flag: SectionFlag, result: &mut Vec<SectionFlag>) {
+    if (v & section_flag_to_u64(flag)) != 0 {
+        result.push(u64_to_section_flag(v, flag))
+    }
+}
+
+// adds the proper tuple values
+fn u64_to_section_flag(v: u64, flag: SectionFlag) -> SectionFlag {
+    match flag {
+        SectionFlag::MaskOs(_) => SectionFlag::MaskOs(v),
+        SectionFlag::MaskProc(_) => SectionFlag::MaskProc(v),
+        other => other,
+    }
+}
+
+fn section_flag_to_u64(flag: SectionFlag) -> u64 {
+    match flag {
+        SectionFlag::Write => 0x01,
+        SectionFlag::Alloc => 0x02,
+        SectionFlag::ExecInstr => 0x04,
+        SectionFlag::Merge => 0x10,
+        SectionFlag::Strings => 0x20,
+        SectionFlag::InfoLink => 0x40,
+        SectionFlag::LinkOrder => 0x80,
+        SectionFlag::OsNonConforming => 0x100,
+        SectionFlag::Group => 0x200,
+        SectionFlag::TLS => 0x400,
+        SectionFlag::Compressed => 0x800,
+        SectionFlag::MaskOs(_) => 0x0ff00000,
+        SectionFlag::MaskProc(_) => 0xf0000000,
+    }
 }
 
 fn parse_section_type(v: u32) -> Result<SectionType, String> {
