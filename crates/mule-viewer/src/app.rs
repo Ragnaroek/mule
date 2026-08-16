@@ -1,6 +1,7 @@
 use eframe::egui;
 use egui::{
-    Button, ColorImage, ScrollArea, TextureHandle, containers::menu::MenuButton, load::SizedTexture,
+    Button, Color32, ColorImage, ScrollArea, TextureHandle, containers::menu::MenuButton,
+    load::SizedTexture,
 };
 use poll_promise::Promise;
 
@@ -20,6 +21,7 @@ pub struct MuleApp {
     logo_menu: TextureHandle,
 
     binary_file_open_promise: Option<Promise<FileUpload>>,
+    binary_file_open_error_text: Option<String>,
     binary_view_open: Option<BinaryViewOpen>,
 }
 
@@ -62,6 +64,7 @@ impl MuleApp {
             logo,
             logo_menu,
             binary_file_open_promise: None,
+            binary_file_open_error_text: None,
             binary_view_open,
         }
     }
@@ -69,12 +72,24 @@ impl MuleApp {
     fn handle_file_upload(&mut self) {
         if let Some(binary_promise) = &self.binary_file_open_promise {
             if let Some(file_upload) = binary_promise.ready() {
-                let gb_binary = mule_gb::load(&file_upload.bytes).expect("gb file binary parse");
-                self.binary_view_open = Some(BinaryViewOpen {
-                    file_name: file_upload.name.clone(),
-                    view: Box::new(GBViewWidget::new(gb_binary)),
-                });
-                self.binary_file_open_promise = None;
+                if file_upload.name.ends_with(".gb") {
+                    let gb_binary_load_result = mule_gb::load(&file_upload.bytes);
+                    if let Err(err) = gb_binary_load_result {
+                        self.binary_file_open_promise = None;
+                        self.binary_file_open_error_text = Some(err)
+                    } else {
+                        self.binary_view_open = Some(BinaryViewOpen {
+                            file_name: file_upload.name.clone(),
+                            view: Box::new(GBViewWidget::new(gb_binary_load_result.unwrap())),
+                        });
+                        self.binary_file_open_promise = None;
+                    }
+                }
+                // TODO check elf magic header here to check whether it is ELF
+                else {
+                    self.binary_file_open_promise = None;
+                    self.binary_file_open_error_text = Some("Unsupported file type".to_string());
+                }
             }
         }
     }
@@ -92,12 +107,18 @@ impl MuleApp {
                 ui.add_space(5.0);
                 if ui.button("Upload").clicked() {
                     let egui_ctx = ui.ctx().clone();
+                    self.binary_file_open_error_text = None; // reset error
                     self.binary_file_open_promise =
                         Some(poll_promise::Promise::spawn_local(async move {
                             let file_upload = open_file().await;
                             egui_ctx.request_repaint(); // Wake ui thread
                             file_upload
                         }));
+                }
+
+                if let Some(open_err_text) = &self.binary_file_open_error_text {
+                    ui.add_space(10.0);
+                    ui.colored_label(Color32::RED, open_err_text);
                 }
             });
         });
