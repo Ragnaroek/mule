@@ -85,7 +85,7 @@ impl MuleApp {
                         });
                     }
                 } else if file_name.ends_with(".gb") {
-                    let gb_binary_load_result = mule_gb::load(&file_upload.bytes);
+                    let gb_binary_load_result = mule_gb::parse(&file_upload.bytes);
                     if let Err(err) = gb_binary_load_result {
                         self.binary_file_open_error_text = Some(err)
                     } else {

@@ -26,7 +26,7 @@ pub fn open_binary_file(path: &Path) -> Result<BinaryFile, String> {
 
     if extension == Some("gb") || extension == Some("gbc") {
         let data = fs::read(path).map_err(|e| e.to_string())?;
-        let gb_file = mule_gb::load(&data)?;
+        let gb_file = mule_gb::parse(&data)?;
         return Ok(BinaryFile::GB(gb_file));
     }
 

@@ -161,7 +161,7 @@ pub const NEW_LICENCSEE_CODE_VAL: u8 = 0x33;
 pub const BANK_BYTES: usize = 16 * 1024;
 pub const DATA_START: usize = 0x150;
 
-pub fn load(data: &[u8]) -> Result<GBBinary, String> {
+pub fn parse(data: &[u8]) -> Result<GBBinary, String> {
     let mut reader = DataReader::new(data);
     let restart_calls = parse_restart_calls(&mut reader)?;
     let interrupts = parse_interrupts(&mut reader)?;
