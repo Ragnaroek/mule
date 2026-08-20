@@ -148,7 +148,11 @@ impl GBInteractiveState {
 fn disassemble(data: &[u8]) -> Vec<String> {
     match gb::disassemble(data) {
         Err(err) => vec![format!("Err disassemble: {}", err)],
-        Ok(dis) => dis,
+        Ok(dis) => dis
+            .instructions
+            .iter()
+            .map(|d| d.instr.text(None))
+            .collect(),
     }
 }
 
