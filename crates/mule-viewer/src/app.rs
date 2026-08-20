@@ -95,7 +95,7 @@ impl MuleApp {
     }
 
     fn show_start_screen(&mut self, ui: &mut egui::Ui) {
-        egui::CentralPanel::default().show_inside(ui, |ui| {
+        egui::CentralPanel::default().show(ui, |ui| {
             ui.vertical_centered(|ui| {
                 let logo_size = self.logo.size_vec2();
                 ui.add_space(ui.available_height() / 2.0 - logo_size.y);
@@ -127,7 +127,7 @@ impl MuleApp {
     fn show_top_menu(ui: &mut egui::Ui, binary_name: &str, logo: &TextureHandle) {
         egui::Panel::top("menu")
             .exact_size(MENU_HEIGHT)
-            .show_inside(ui, |ui| {
+            .show(ui, |ui| {
                 egui::MenuBar::new().ui(ui, |ui| {
                     ui.set_max_height(MENU_HEIGHT);
 

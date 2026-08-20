@@ -200,7 +200,7 @@ impl BinaryViewWidget for GBViewWidget {
             .resizable(true)
             .default_size(300.0)
             .frame(Frame::new().inner_margin(Margin::same(SIDE_SEG_MARGIN)))
-            .show_inside(ui, |ui| {
+            .show(ui, |ui| {
                 self.tile_restarts
                     .set_selected(self.selected == GBSelected::Restarts);
                 if self
@@ -286,7 +286,7 @@ impl BinaryViewWidget for GBViewWidget {
                 })
             });
 
-        egui::CentralPanel::default().show_inside(ui, |ui| {
+        egui::CentralPanel::default().show(ui, |ui| {
             if self.tile_banks.is_selected() {
                 self.render_bank_view(ui);
             } else if self.tile_header.is_selected() {
