@@ -9,7 +9,7 @@ mod lib_test;
 mod reader;
 
 #[derive(Serialize)]
-pub struct Elf {
+pub struct ElfBinary {
     header: Header,
     program_header_table: Vec<ProgramHeader>,
     section_header_table: Vec<SectionHeader>,
@@ -160,7 +160,12 @@ pub enum SectionType {
     User(u32),
 }
 
-pub fn parse(data: &[u8]) -> Result<Elf, String> {
+pub fn has_elf_magic_header(data: &[u8]) -> bool {
+    let mut reader = DataReader::new(data);
+    parse_magic_header(&mut reader).is_ok()
+}
+
+pub fn parse(data: &[u8]) -> Result<ElfBinary, String> {
     let mut reader = DataReader::new(data);
     let header = parse_header(&mut reader)?;
     let program_header_table = parse_program_header_table(&mut reader, &header)?;
@@ -172,7 +177,7 @@ pub fn parse(data: &[u8]) -> Result<Elf, String> {
     )?;
     patch_section_names(&mut section_header_table, &section_str_tab)?;
 
-    Ok(Elf {
+    Ok(ElfBinary {
         header,
         program_header_table,
         section_header_table,
@@ -180,10 +185,7 @@ pub fn parse(data: &[u8]) -> Result<Elf, String> {
 }
 
 pub fn parse_header(reader: &mut DataReader) -> Result<Header, String> {
-    let magic = reader.read_u32();
-    if magic != MAGIC_HEADER {
-        return Err("not an elf file".to_string());
-    }
+    parse_magic_header(reader)?;
 
     let identification = parse_identification(reader)?;
 
@@ -217,6 +219,14 @@ pub fn parse_header(reader: &mut DataReader) -> Result<Header, String> {
         section_header_num,
         section_header_string_table_index,
     })
+}
+
+fn parse_magic_header(reader: &mut DataReader) -> Result<(), String> {
+    let magic = reader.read_u32();
+    if magic != MAGIC_HEADER {
+        return Err("not an elf file".to_string());
+    }
+    Ok(())
 }
 
 fn parse_identification(reader: &mut DataReader) -> Result<Identification, String> {

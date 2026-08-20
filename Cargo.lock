@@ -2370,6 +2370,7 @@ dependencies = [
  "gloo-net",
  "image",
  "log",
+ "mule_elf",
  "mule_gb",
  "poll-promise",
  "psy",

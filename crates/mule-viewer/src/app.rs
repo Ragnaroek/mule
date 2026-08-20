@@ -8,6 +8,7 @@ use poll_promise::Promise;
 use crate::{
     util::{FileUpload, open_file},
     view::BinaryViewWidget,
+    view_elf::ElfViewWidget,
     view_gb::GBViewWidget,
 };
 
@@ -72,24 +73,33 @@ impl MuleApp {
     fn handle_file_upload(&mut self) {
         if let Some(binary_promise) = &self.binary_file_open_promise {
             if let Some(file_upload) = binary_promise.ready() {
-                if file_upload.name.ends_with(".gb") {
-                    let gb_binary_load_result = mule_gb::load(&file_upload.bytes);
-                    if let Err(err) = gb_binary_load_result {
-                        self.binary_file_open_promise = None;
+                let file_name = file_upload.name.clone();
+                if mule_elf::has_elf_magic_header(&file_upload.bytes) {
+                    let elf_binary_load_result = mule_elf::parse(&file_upload.bytes);
+                    if let Err(err) = elf_binary_load_result {
                         self.binary_file_open_error_text = Some(err)
                     } else {
                         self.binary_view_open = Some(BinaryViewOpen {
-                            file_name: file_upload.name.clone(),
+                            file_name,
+                            view: Box::new(ElfViewWidget::new(elf_binary_load_result.unwrap())),
+                        });
+                    }
+                } else if file_name.ends_with(".gb") {
+                    let gb_binary_load_result = mule_gb::load(&file_upload.bytes);
+                    if let Err(err) = gb_binary_load_result {
+                        self.binary_file_open_error_text = Some(err)
+                    } else {
+                        self.binary_view_open = Some(BinaryViewOpen {
+                            file_name,
                             view: Box::new(GBViewWidget::new(gb_binary_load_result.unwrap())),
                         });
-                        self.binary_file_open_promise = None;
                     }
+                } else {
+                    self.binary_file_open_error_text =
+                        Some(format!("Unsupported file: {}", file_name));
                 }
-                // TODO check elf magic header here to check whether it is ELF
-                else {
-                    self.binary_file_open_promise = None;
-                    self.binary_file_open_error_text = Some("Unsupported file type".to_string());
-                }
+
+                self.binary_file_open_promise = None;
             }
         }
     }

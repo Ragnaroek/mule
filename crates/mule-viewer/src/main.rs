@@ -3,6 +3,7 @@ mod hex;
 mod toggle;
 mod util;
 mod view;
+mod view_elf;
 mod view_gb;
 
 use app::MuleApp;
