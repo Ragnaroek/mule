@@ -8,12 +8,12 @@ web = []
 debug = []
 
 [dependencies]
-eframe = "0.35.0"
-egui = "0.35.0"
-wasm-bindgen = "0.2.126"
-wasm-bindgen-futures = "0.4.76"
+eframe = "0.36.1"
+egui = "0.36.1"
+wasm-bindgen = "0.2.127"
+wasm-bindgen-futures = "0.4.77"
 log = "0.4.33"
-web-sys = { version = "0.3.103", features = ["FileList", "File", "HtmlInputElement"] }
+web-sys = { version = "0.3.104", features = ["FileList", "File", "HtmlInputElement"] }
 image = { version = "0.25.10", default-features = false, features = ["png"] }
 gloo-net = "0.7.0"
 rfd = "0.17.2"
@@ -23,4 +23,6 @@ mule_gb = { path = "../mule-gb/" }
 psy = { path = "../../../psy/" }
 
 [profile.release]
-opt-level = "s"
+lto = true
+opt-level = "z"
+debug = false
