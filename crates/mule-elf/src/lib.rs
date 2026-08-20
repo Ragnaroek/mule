@@ -10,9 +10,9 @@ mod reader;
 
 #[derive(Serialize)]
 pub struct ElfBinary {
-    header: Header,
-    program_header_table: Vec<ProgramHeader>,
-    section_header_table: Vec<SectionHeader>,
+    pub header: Header,
+    pub program_header_table: Vec<ProgramHeader>,
+    pub section_header_table: Vec<SectionHeader>,
 }
 
 pub const MAGIC_HEADER: u32 = 0x464c457F; // header is read as little-endian and because of this reversed

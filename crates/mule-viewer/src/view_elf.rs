@@ -29,7 +29,14 @@ impl BinaryViewWidget for ElfViewWidget {
             .frame(Frame::new().inner_margin(Margin::same(SIDE_SEG_MARGIN)))
             .show(ui, |ui| {
                 self.tile_header.show(ui, |ui| {
-                    ui.label(&format!("elf summary?"));
+                    ui.label(&format!(
+                        "Program headers: {}",
+                        self.binary.program_header_table.len()
+                    ));
+                    ui.label(&format!(
+                        "Sections: {}",
+                        self.binary.section_header_table.len()
+                    ));
                 });
             });
 
